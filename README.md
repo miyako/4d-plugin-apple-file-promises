@@ -137,6 +137,10 @@ When neither of the app specific types are found, but either ``kPasteboardTypeFi
 
 Maybe it is because [``namesOfPromisedFilesDroppedAtDestination:``](https://developer.apple.com/documentation/appkit/nsdragginginfo/1415980-namesofpromisedfilesdroppedatdes) has been deprecated in 10.13. 
 
+* Folder Watching
+
+Whether the designated apps (Mail, Outlook) are invoked by scripting, or file promises are used, the plugin starts monitoring the destination folder (which is created in the temporary folder, ``NSItemReplacementDirectory`` in ``NSUserDomainMask`` appropriate for ``NSDesktopDirectory``) using [``FSEventStream``](https://developer.apple.com/library/content/documentation/Darwin/Conceptual/FSEvents_ProgGuide/UsingtheFSEventsFramework/UsingtheFSEventsFramework.html).
+
 ## Syntax
 
 ```
