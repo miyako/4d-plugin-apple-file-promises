@@ -11,6 +11,16 @@ Receive file promises from Apple (and other) apps
 
 <img src="https://cloud.githubusercontent.com/assets/1725068/18940648/2192ddba-8645-11e6-864d-6d5692d55717.png" width="32" height="32" />
 
+### Releases 
+
+[1.0](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.0)
+
+### Discussion
+
+This plugin is design to add the following functionalities to 4D:
+
+* Drag and drop emails from typical clients (Mail, Outlook) directly to 4D.
+
 ## Syntax
 
 ```
