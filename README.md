@@ -37,7 +37,7 @@ Inspect ``[[sender draggingPasteboard]types]``.
 
 * Mail (Apple)
 
-If ``com.apple.mail.PasteboardTypeAutomator`` is found, run code to get ``eml`` files out of Mail.
+If ``com.apple.mail.PasteboardTypeAutomator`` is found, the plugin runs code to get ``eml`` files out of Mail.
 
 **Note**: Evidently, Mail uses [file promises](https://developer.apple.com/documentation/uikit/drag_and_drop/understanding_a_drag_item_as_a_promise) to export a single message (short operation) and Automator to export multiple messages. ``com.apple.mail.PasteboardTypeAutomator`` is property list, an ``NSArray`` of ``NSDictionary``, which maps to objects with the structure ``[{account:string, id:integer, mailbox:string, subject:string}]``. Given the 3 identifiers (``account``, ``mailbox``, ``id``) it is possible to use AppleScript like this:
 
@@ -81,6 +81,53 @@ for (id source in sources) {
 	atomically:NO
 	encoding:NSUTF8StringEncoding
 	error:nil];
+}
+```
+
+* Outlook (Microsoft)
+
+Likewise, if ``dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df`` is found, the plugin runs code to get ``eml`` files out of Outlook.
+
+**Note**: The above dynamic UTI resolves as ``?0=6:4=ERMessagePasteboardType`` using the method published [here](https://gist.github.com/jtbandes/19646e7457208ae9b1ad). Outlook used to deliver a type named ``ERMessagePasteboardType`` in version 14 but evidently removed it in version 15.
+
+There is no list of selected messages (as was the case with Mail) but we could assume in AppleScript that the current selection should be exported like this:
+
+```applescript
+on run argv
+	set param_path to item 1 of argv
+	tell application "Microsoft Outlook"
+		set p to param_path
+		set mm to selection as list
+		repeat with m in mm
+			set s to (source of m) as «class utf8»
+			try
+				set f to open for access (p & (id of m) & ".eml") with write permission
+				write s to f
+				close access f
+			end try
+		end repeat
+	end tell
+end run
+``` 
+
+**For optimisation**, the plugin uses [``ScriptingBridge``](https://developer.apple.com/documentation/scriptingbridge) to create the ``eml`` file by itself, rather than launching ``osascript`` or ``NSAppleScript`` to run the AppleScript shown above. Notice the property is ``selectedObjects``, not ``selection`` as in Mail.
+
+```objc
+MailApplication *application = [SBApplication applicationWithBundleIdentifier:@"com.apple.mail"];
+		
+NSArray *mails = [application selection];
+NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
+NSUInteger i = 0;
+
+NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
+
+for (id source in sources) {
+	i++;
+	NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
+	[(NSString *)source writeToFile:dst
+		 atomically:NO
+ encoding:NSUTF8StringEncoding
+		error:nil];
 }
 ```
 
