@@ -131,6 +131,9 @@ for (id source in sources) {
 }
 ```
 
+* Fallback
+
+When neither of the app specific types are found, but either ``kPasteboardTypeFileURLPromise`` or ``NSPromiseContentsPboardType`` is found, the plugin falls back to generic file promise handling. In particular, it calls ``namesOfPromisedFilesDroppedAtDestination:`` to request the source to created the promised files. **However, this does not seem to work on High Sierra** (no issues on El Capitan). Maybe it is because [``namesOfPromisedFilesDroppedAtDestination:``](https://developer.apple.com/documentation/appkit/nsdragginginfo/1415980-namesofpromisedfilesdroppedatdes) has been deprecated in 10.13. It seems like ``performDragOperation:`` is no longer invoked just by calling this method in the destination's [``performDragOperation:``](https://developer.apple.com/documentation/appkit/nsdraggingdestination/1415970-performdragoperation?language=objc).
 
 ## Syntax
 
