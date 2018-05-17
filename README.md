@@ -78,9 +78,9 @@ for (id source in sources) {
 	i++;
 	NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
 	[(NSString *)source writeToFile:dst
-	atomically:NO
-	encoding:NSUTF8StringEncoding
-	error:nil];
+		atomically:NO
+		encoding:NSUTF8StringEncoding
+		error:nil];
 }
 ```
 
@@ -125,8 +125,8 @@ for (id source in sources) {
 	i++;
 	NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
 	[(NSString *)source writeToFile:dst
-		 atomically:NO
- encoding:NSUTF8StringEncoding
+		atomically:NO
+		encoding:NSUTF8StringEncoding
 		error:nil];
 }
 ```
