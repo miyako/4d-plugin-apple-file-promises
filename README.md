@@ -21,7 +21,7 @@ This plugin is design to add the following functionalities to 4D:
 
 * Drag and drop emails from typical clients (Mail, Outlook) directly to 4D.
 
-To process [file promises](https://developer.apple.com/documentation/uikit/drag_and_drop/understanding_a_drag_item_as_a_promise) in 4D, the plugin uses a technique known as **method swizzling**. For that reason, it is only compatible with the 64-bit Cocoa version of 4D.
+To customise drag and drop event hsndling, the plugin uses a technique known as **method swizzling**. For that reason, it is only compatible with the 64-bit Cocoa version of 4D.
 
 
 
