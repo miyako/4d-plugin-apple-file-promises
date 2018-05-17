@@ -27,13 +27,15 @@ When swizzling is activated, the plugin adds some extra code to the following dr
 
 This allows the plugin to perform some extra work when 4D processes drag and drop events (``On Drag Over``, ``On Drop``) on its form objects.
 
-``draggingEntered:``: nothing special  
-``draggingUpdated:``: nothing special  
-``prepareForDragOperation:``: nothing special  
+``draggingEntered:`` nothing special  
+``draggingUpdated:`` nothing special  
+``prepareForDragOperation:`` nothing special  
 
-``performDragOperation:``:  
+``performDragOperation:``  
 
 Inspect ``[[sender draggingPasteboard]types]``.  
+
+* Mail (Apple)
 
 If ``com.apple.mail.PasteboardTypeAutomator`` is found, run code to get ``eml`` files out of Mail.
 
