@@ -33,9 +33,9 @@ This allows the plugin to perform some extra work when 4D processes drag and dro
 
 ``performDragOperation:``:  
 
-Inspect ``[[sender draggingPasteboard]types]``.  
+Inspect ``\[\[sender draggingPasteboard\]types\]``.  
 
-If ``"com.apple.mail.PasteboardTypeAutomator`` is found, run code to get ``eml`` files out of Mail.
+If ``com.apple.mail.PasteboardTypeAutomator`` is found, run code to get ``eml`` files out of Mail.
 
 **Note**: Evidently, Mail uses [file promises](https://developer.apple.com/documentation/uikit/drag_and_drop/understanding_a_drag_item_as_a_promise) to export a single message (short operation) in El Capitan and Automator to export multiple messages. ``com.apple.mail.PasteboardTypeAutomator`` is property list, an ``NSArray`` of ``NSDictionary``, which maps to objects with the structure ``[{account:string, id:integer, mailbox:string, subject:string}]``. Given the 3 identifiers (``account``, ``mailbox``, ``id``) it is possible to use AppleScript like this:
 
