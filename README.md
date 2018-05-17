@@ -141,6 +141,8 @@ Maybe it is because [``namesOfPromisedFilesDroppedAtDestination:``](https://deve
 
 Whether the designated apps (Mail, Outlook) are invoked by scripting, or file promises are used, the plugin starts monitoring the destination folder (which is created in the temporary folder, ``NSItemReplacementDirectory`` in ``NSUserDomainMask`` appropriate for ``NSDesktopDirectory``) using [``FSEventStream``](https://developer.apple.com/library/content/documentation/Darwin/Conceptual/FSEvents_ProgGuide/UsingtheFSEventsFramework/UsingtheFSEventsFramework.html).
 
+The callback 4D method is executed every time a file is added to the destination folder. Meanwhile, **for optimisation**, the code to extract and export ``eml`` files from Mail or Outlook are executed in a background thread, with [``performSelectorInBackground:``](https://developer.apple.com/documentation/objectivec/nsobject/1412390-performselectorinbackground?language=objc).  
+
 ## Syntax
 
 ```
