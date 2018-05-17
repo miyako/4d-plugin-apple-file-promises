@@ -23,7 +23,7 @@ This plugin is design to add the following functionalities to 4D:
 
 To customise drag and drop event handling, the plugin uses a technique known as **method swizzling**. For that reason, it is only compatible with the 64-bit Cocoa version of 4D.
 
-
+When swizzling is activated, the plugin adds some extra code to the following drag and drop obj-c methods from the ``NSDraggingDestination`` protocol: ``draggingEntered:``, ``draggingUpdated:``, ``prepareForDragOperation:``, ``performDragOperation:``, ``concludeDragOperation:``.
 
 
 
