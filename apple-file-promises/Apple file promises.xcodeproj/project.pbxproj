@@ -146,9 +146,7 @@
 		089C166AFE841209C02AAC07 /* Apple file promises */ = {
 			isa = PBXGroup;
 			children = (
-				D102925120ABD6FC009CAE4E /* Mail.h */,
-				D102925820AC35AA009CAE4E /* Outlook.h */,
-				D102925620AC2C6A009CAE4E /* Photos.h */,
+				D116959320AD377A00DEFFA3 /* Scripting */,
 				D108BD7A1A03D1E6001F1B90 /* Manifest */,
 				08FB77ADFE841716C02AAC07 /* Source */,
 				089C167CFE841241C02AAC07 /* Resources */,
@@ -226,6 +224,16 @@
 				D14D10DD1A03A8A5008B3411 /* constants.xlf */,
 			);
 			name = Manifest;
+			sourceTree = "<group>";
+		};
+		D116959320AD377A00DEFFA3 /* Scripting */ = {
+			isa = PBXGroup;
+			children = (
+				D102925120ABD6FC009CAE4E /* Mail.h */,
+				D102925820AC35AA009CAE4E /* Outlook.h */,
+				D102925620AC2C6A009CAE4E /* Photos.h */,
+			);
+			name = Scripting;
 			sourceTree = "<group>";
 		};
 		D13116D01A03BBA100DE1322 /* C */ = {

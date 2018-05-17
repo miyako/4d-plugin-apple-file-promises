@@ -118,9 +118,8 @@ void sb_tell_mail_to_export(NSURL *url)
 			for (id source in sources) {
 				i++;
 				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
-				NSLog(@"%@", dst);
 				[(NSString *)source writeToFile:dst
-														 atomically:NO /* avoid catching the atmic write files */
+														 atomically:NO /* avoid catching the atomic write files */
 															 encoding:NSUTF8StringEncoding
 																	error:nil];
 			}
@@ -250,7 +249,7 @@ void sb_tell_mail_to_export(NSURL *url, NSArray *plist)
 
  */
 
-@interface Listener : NSObject <NSSpeechRecognizerDelegate>
+@interface Listener : NSObject
 
 {
 	FSEventStreamRef stream;
@@ -329,7 +328,7 @@ NSDragOperation __swiz_draggingEntered(id self, SEL _cmd, id sender)
 	
 	if(returnValue & NSDragOperationNone)
 	{
-		/* change the drag icon here? */
+		/* can we change the drag icon here? */
 	}
 	
 	NSPasteboard *pboard = [sender draggingPasteboard];
@@ -394,7 +393,7 @@ NSDragOperation __swiz_draggingUpdated(id self, SEL _cmd, id sender)
 	
 	if(returnValue & NSDragOperationNone)
 	{
-		/* change the drag icon here? */
+		/* can we change the drag icon here? */
 	}
 	
 	if(false)
@@ -496,10 +495,11 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 	{
 		NSURL *url = temporaryDirectory();
 		
-		/* need to call this here for promised files to be copied (El capitan) */
+		/*
+		 * Drag destinations should invoke this method within their performDragOperation: method.
+		 * https://developer.apple.com/documentation/appkit/nsdragginginfo/1415980-namesofpromisedfilesdroppedatdes
+		 */
 		NSArray *filenames = [sender namesOfPromisedFilesDroppedAtDestination:url];
-		
-		/* but it seems we need to do more for High Sierra */
 		
 		/* prepare listener for fiel copy */
 		[FilePromise::listener setURL:url];
@@ -568,6 +568,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		/* the promised files may not be available at this point 
 		 * does not seem to be working after El Capitain (maybe due to namesOfPromisedFilesDroppedAtDestination deprecation)
 		 */
+		
 		goto exit;
 	}
 

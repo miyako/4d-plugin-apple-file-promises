@@ -17,6 +17,9 @@
          </PersistentStrings>
       </ContextState>
       <ContextState
+         contextName = "__swiz_draggingEntered(objc_object*, objc_selector*, objc_object*):4DPlugin.cpp">
+      </ContextState>
+      <ContextState
          contextName = "__swiz_performDragOperation(objc_object*, objc_selector*, objc_object*):4DPlugin.cpp">
       </ContextState>
    </ContextStates>
