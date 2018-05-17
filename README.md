@@ -33,7 +33,7 @@ This allows the plugin to perform some extra work when 4D processes drag and dro
 
 ``performDragOperation:``:  
 
-Inspect ``\[\[sender draggingPasteboard\]types\]``.  
+Inspect ``[[sender draggingPasteboard]types]``.  
 
 If ``com.apple.mail.PasteboardTypeAutomator`` is found, run code to get ``eml`` files out of Mail.
 
