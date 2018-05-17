@@ -143,6 +143,10 @@ Whether the designated apps (Mail, Outlook) are invoked by scripting, or file pr
 
 The callback 4D method is executed every time a file is added to the destination folder. Meanwhile, **for optimisation**, the code to extract and export ``eml`` files from Mail or Outlook are executed in a background thread, with [``performSelectorInBackground:``](https://developer.apple.com/documentation/objectivec/nsobject/1412390-performselectorinbackground?language=objc).  
 
+* Simple API
+
+If neither the app specific types or the file promise types are found, but ``NSFilenamesPboardType`` is found, in other words, a file (not a promise) has been dropped, the same callback 4D method is invoked instantly. 4D does not have to know if the file existed already or was created via scripting or via promises being kept. It just receives a path.
+
 ## Syntax
 
 ```
