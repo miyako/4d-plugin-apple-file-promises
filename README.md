@@ -61,6 +61,26 @@ on run argv
 end run
 ```
 
+**For optimisation**, the plugin uses [``ScriptingBridge``](https://developer.apple.com/documentation/scriptingbridge) to create the ``eml`` file by itself, rather than launching ``osascript`` or ``NSAppleScript`` to run the AppleScript shown above.
+
+```objc
+MailApplication *application = [SBApplication applicationWithBundleIdentifier:@"com.apple.mail"];
+
+NSArray *mails = [application selection];
+NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
+NSUInteger i = 0;
+
+NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
+
+for (id source in sources) {
+	i++;
+	NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
+	[(NSString *)source writeToFile:dst
+	atomically:NO
+	encoding:NSUTF8StringEncoding
+	error:nil];
+}
+```
 
 
 ## Syntax
