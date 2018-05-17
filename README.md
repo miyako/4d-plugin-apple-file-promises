@@ -17,7 +17,7 @@ Receive file promises from Apple (and other) apps
 
 ### Discussion
 
-This plugin is design to add the following functionalities to 4D:
+This plugin is designed to add the following functionalities to 4D:
 
 * Drag and drop emails from typical clients (Mail, Outlook) directly to 4D.
 
