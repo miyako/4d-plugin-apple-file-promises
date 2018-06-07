@@ -870,7 +870,7 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 	return self;
 }
 
-- (id)dealloc
+- (void)dealloc
 {
 	if(stream)
 	{
@@ -880,6 +880,8 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 		FSEventStreamRelease(stream);
 		stream = 0;
 	}
+	
+	[super dealloc];
 }
 
 - (void)setURL:(NSURL *)url
