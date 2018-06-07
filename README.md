@@ -13,7 +13,7 @@ Receive file promises from Apple (and other) apps
 
 ### Releases 
 
-[1.1](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.1) [demo](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/demo)
+[1.2](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.2) [demo](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/demo)
 
 ### Discussion
 
