@@ -13,7 +13,7 @@ Receive file promises from Apple (and other) apps
 
 ### Releases 
 
-[1.0](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.0)
+[1.1](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.1) [demo](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/demo)
 
 ### Discussion
 
@@ -158,3 +158,7 @@ Parameter|Type|Description
 accept|LONGINT|``1`` or ``0``
 method|TEXT|
 context|TEXT|optional
+
+In ``method`` pass the callback project method name. It will be called with 2 parameters, where ``$1`` is the system full path of the file dropped to 4D, and ``$2`` is a copy of the ``context`` you passed earlier. You can use ``context`` to let the callback notify and update your UI worker/process, for example.
+
+Passing ``0`` will terminate the folder monitoring process. The plugin does this automatically when you close the application. In fact, you should **NOT** explicitly call the plugin command in your ``On Exit`` event, because it will cause thread synchronisation issues.
