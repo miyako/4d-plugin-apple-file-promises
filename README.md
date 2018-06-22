@@ -11,11 +11,11 @@ Accept drag and drop of messages from Apple Mail and Microsoft Outlook
 
 ### Version
 
-<img src="https://cloud.githubusercontent.com/assets/1725068/18940648/2192ddba-8645-11e6-864d-6d5692d55717.png" width="32" height="32" />
+<img src="https://cloud.githubusercontent.com/assets/1725068/18940648/2192ddba-8645-11e6-864d-6d5692d55717.png" width="32" height="32" /> <img src="https://user-images.githubusercontent.com/1725068/41266195-ddf767b2-6e30-11e8-9d6b-2adf6a9f57a5.png" width="32" height="32" />
 
 ### Releases 
 
-[1.2](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.2) [demo](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/demo)
+[1.3](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.3)
 
 ## Syntax
 
