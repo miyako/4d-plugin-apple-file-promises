@@ -1,11 +1,13 @@
 # 4d-plugin-apple-file-promises
-Receive file promises from Apple (and other) apps
+Accept drag and drop of messages from Apple Mail and Microsoft Outlook
 
 ### Platform
 
 | carbon | cocoa | win32 | win64 |
 |:------:|:-----:|:---------:|:---------:|
 ||<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" />|||
+
+**A similar solution for Windows is available**: (message-file-drop)[https://github.com/miyako/4d-plugin-message-file-drop]
 
 ### Version
 
