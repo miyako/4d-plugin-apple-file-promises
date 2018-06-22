@@ -8,16 +8,32 @@
  #
  # --------------------------------------------------------------------------------*/
 
-
 #include "4DPluginAPI.h"
 #include "4DPlugin.h"
 
-#import <objc/runtime.h>
-#import <AppKit/AppKit.h>
+Swizzle_XMacNSView_saisierec_Class *swizzle_XMacNSView_saisierec = nil;
 
-#include "Mail.h"
-#include "Photos.h"
-#include "Outlook.h"
+static IMP __orig_imp_draggingEntered;
+static IMP __orig_imp_draggingUpdated;
+static IMP __orig_imp_prepareForDragOperation;
+static IMP __orig_imp_performDragOperation;
+static IMP __orig_imp_concludeDragOperation;
+
+namespace FilePromise
+{
+	Listener *listener = nil;
+	
+	process_number_t METHOD_PROCESS_ID = 0;
+	process_stack_size_t STACK_SIZE = 0;
+	const process_name_t PROCESS_NAME = (PA_Unichar *)"$\0A\0F\0P\0\0\0";
+	
+	C_TEXT LISTENER_METHOD;
+	std::vector<CUTF16String>PATHS;
+	C_TEXT LISTENER_CONTEXT;
+	
+	bool PROCESS_SHOULD_TERMINATE = false;
+	bool PROCESS_SHOULD_RESUME = false;
+}
 
 NSString *copyDecodedDynUTI(NSString *uti)
 {
@@ -81,6 +97,33 @@ NSString *copyDecodedDynUTI(NSString *uti)
 	[dat release];
 	
 	return result;
+}
+
+NSURL *temporaryDirectory()
+{
+	NSURL *url = nil;
+	
+	NSArray *URLs = [[NSFileManager defaultManager]
+									 URLsForDirectory:NSDesktopDirectory
+									 inDomains:NSUserDomainMask];
+	
+	if(URLs && [URLs count])
+	{
+		
+		url = [[NSFileManager defaultManager]
+					 URLForDirectory:NSItemReplacementDirectory
+					 inDomain:NSUserDomainMask
+					 appropriateForURL:[URLs objectAtIndex:0]
+					 create:YES
+					 error:nil];
+	}
+	
+	return url;
+}
+
+void generateUuid(C_TEXT &returnValue)
+{
+	returnValue.setUTF16String([[[NSUUID UUID]UUIDString]stringByReplacingOccurrencesOfString:@"-" withString:@""]);
 }
 
 #pragma mark AppleScript
@@ -159,168 +202,6 @@ void sb_tell_outlook_to_export(NSURL *url)
 		}
 	}	
 }
-
-/*
- 
- void sb_tell_outlook_to_export(NSURL *url, NSArray *plist)
-{
-	NSString *script =
-	@"on run argv\n\
-	set param_path to item 1 of argv\n\
-	tell application \"Microsoft Outlook\"\n\
-	set p to param_path\n\
-	set mm to selection as list\n\
-	repeat with m in mm\n\
-	set s to (source of m) as «class utf8»\n\
-	try\n\
-	set f to open for access (p & (id of m) & \".eml\") with write permission\n\
-	write s to f\n\
-	close access f\n\
-	end try\n\
-	end repeat\n\
-	end tell\n\
-	end run";
-	
-	NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLHFSPathStyle);
-	
-	@autoreleasepool
-	{
-		NSString *mail_dstpath = [path stringByAppendingString:@":"];
-		NSArray *arguments = @[@"-e", script, mail_dstpath];
-		NSTask *task = [[NSTask alloc]init];
-		[task setLaunchPath: @"/usr/bin/osascript"];
-		[task setArguments:arguments];
-		[task launch];
-		[task release];
-	}
-	
-	[path release];
-}
-
-void sb_tell_mail_to_export(NSURL *url, NSArray *plist)
-{
-	NSString *script =
-	@"on run argv\n\
-	set param_mailbox to item 1 of argv\n\
-	set param_account to item 2 of argv\n\
-	set param_id to item 3 of argv\n\
-	set param_path to item 4 of argv\n\
-	tell application \"Mail\"\n\
-	set mm to (messages of mailbox param_mailbox of account param_account) whose id is param_id\n\
-	if (count mm) is 1 then\n\
-	set m to item 1 of mm\n\
-	set p to param_path\n\
-	set s to (source of m) as «class utf8»\n\
-	try\n\
-	set f to open for access p with write permission\n\
-	write s to f\n\
-	close access f\n\
-	end try\n\
-	end if\n\
-	end tell\n\
-	end run";
-	
-	NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLHFSPathStyle);
-	
-	@autoreleasepool
-	{
-		[plist enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-			
-			NSDictionary *dict = obj;
-			
-			NSString *mail_message = [(NSNumber *)[dict objectForKey:@"id"]stringValue];
-			NSString *mail_mailbox = [dict objectForKey:@"mailbox"];
-			NSString *mail_account = [dict objectForKey:@"account"];
-			NSString *mail_dstpath = [path stringByAppendingFormat:@":%@.%@", mail_message, @"eml"];
-			
-			NSArray *arguments = @[@"-e", script, mail_mailbox, mail_account, mail_message, mail_dstpath];
-			NSTask *task = [[NSTask alloc]init];
-			[task setLaunchPath: @"/usr/bin/osascript"];
-			[task setArguments:arguments];
-			[task launch];
-			[task release];
-
-			}];
-			
-		}
-	
-	[path release];
-}
-
- */
-
-@interface Listener : NSObject
-
-{
-	FSEventStreamRef stream;
-}
-
-- (void)setURL:(NSURL *)url;
-
-@end
-
-namespace FilePromise
-{
-	Listener *listener = nil;
-	
-	process_number_t METHOD_PROCESS_ID = 0;
-	process_stack_size_t STACK_SIZE = 512*1024;
-	process_name_t PROCESS_NAME = (PA_Unichar *)"$\0F\0I\0L\0E\0_\0P\0R\0O\0M\0I\0S\0E\0\0\0";
-	
-	C_TEXT LISTENER_METHOD;
-	
-	/* param1 */
-	std::vector<CUTF16String>PATHS;
-	
-	/* param2 */
-	C_TEXT LISTENER_CONTEXT;
-	
-	/* signal */
-	bool PROCESS_SHOULD_TERMINATE = false;
-}
-
-NSURL *temporaryDirectory()
-{
-	NSURL *url = nil;
-	
-	NSArray *URLs = [[NSFileManager defaultManager]
-									 URLsForDirectory:NSDesktopDirectory
-									 inDomains:NSUserDomainMask];
-	
-	if(URLs && [URLs count])
-	{
-		
-		url = [[NSFileManager defaultManager]
-					 URLForDirectory:NSItemReplacementDirectory
-					 inDomain:NSUserDomainMask
-					 appropriateForURL:[URLs objectAtIndex:0]
-					 create:YES
-					 error:nil];
-	}
-	
-	return url;
-}
-
-@interface
-
-Swizzle_XMacNSView_saisierec_Class : NSObject <NSDraggingDestination>
-{
-
-}
-
-- (void)askPhotosToExport:(NSURL *)url;
-- (void)askOutlookToExport:(NSURL *)url;
-- (void)askMailToExport:(NSURL *)url;
-
-@end
-
-Swizzle_XMacNSView_saisierec_Class *swizzle_XMacNSView_saisierec = nil;
-
-static IMP __orig_imp_draggingEntered;
-static IMP __orig_imp_draggingUpdated;
-static IMP __orig_imp_prepareForDragOperation;
-static IMP __orig_imp_performDragOperation;
-static IMP __orig_imp_concludeDragOperation;
 
 NSDragOperation __swiz_draggingEntered(id self, SEL _cmd, id sender)
 {
@@ -501,6 +382,9 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 		 */
 		NSArray *filenames = [sender namesOfPromisedFilesDroppedAtDestination:url];
 		
+		std::mutex m;
+		std::lock_guard<std::mutex> lock(m);
+		
 		/* prepare listener for fiel copy */
 		[FilePromise::listener setURL:url];
 	}
@@ -524,6 +408,9 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		{
 			NSURL *url = temporaryDirectory();
 			
+			std::mutex m;
+			std::lock_guard<std::mutex> lock(m);
+			
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
 			
@@ -539,6 +426,9 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		{
 			NSURL *url = temporaryDirectory();
 			
+			std::mutex m;
+			std::lock_guard<std::mutex> lock(m);
+			
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
 			
@@ -553,6 +443,9 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		if ([types containsObject:(NSString *)@"com.apple.PhotoPrintProduct.photoUUID"])
 		{
 			NSURL *url = temporaryDirectory();
+			
+			std::mutex m;
+			std::lock_guard<std::mutex> lock(m);
 			
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
@@ -586,7 +479,12 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 				t.setUTF16String(path);
 				CUTF16String u16;
 				t.copyUTF16String(&u16);
+				
+				std::mutex m;
+				std::lock_guard<std::mutex> lock(m);
+				
 				FilePromise::PATHS.push_back(u16);
+				
 				[path release];
 			}
 			
@@ -629,7 +527,12 @@ void gotEvent(FSEventStreamRef stream,
 					t.setUTF16String(path);
 					CUTF16String u16;
 					t.copyUTF16String(&u16);
+					
+					std::mutex m;
+					std::lock_guard<std::mutex> lock(m);
+					
 					FilePromise::PATHS.push_back(u16);
+				
 					[path release];
 					
 					listenerLoopExecute();
@@ -718,7 +621,7 @@ IMP __swiz_imp_concludeDragOperation = (IMP)__swiz_concludeDragOperation;
 	return self;
 }
 
-- (id)dealloc
+- (void)dealloc
 {
 #if CGFLOAT_IS_DOUBLE
 	Class MainViewClass = NSClassFromString(@"XMacNSView_saisierec");
@@ -897,8 +800,6 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 	
 	NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
 	
-	NSLog(@"expecting promised files at:%@", path);
-	
 	FSEventStreamContext context = {0, NULL, NULL, NULL, NULL};
 	NSTimeInterval latency = 1.0;
 	
@@ -925,33 +826,66 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 
 void listenerLoop()
 {
-	FilePromise::listener = [[Listener alloc]init];
-	
-	FilePromise::PROCESS_SHOULD_TERMINATE = false;
-	
-	while(!FilePromise::PROCESS_SHOULD_TERMINATE)
+	if(1)
+	{
+		std::mutex m;
+		std::lock_guard<std::mutex> lock(m);
+		
+		FilePromise::listener = [[Listener alloc]init];
+		FilePromise::PROCESS_SHOULD_TERMINATE = false;
+	}
+
+	while(!PA_IsProcessDying())
 	{
 		PA_YieldAbsolute();
 		
-		while(FilePromise::PATHS.size())
+		std::mutex m;
+		std::lock_guard<std::mutex> lock(m);
+		
+		if(FilePromise::PROCESS_SHOULD_RESUME)
 		{
-			PA_YieldAbsolute();
+			while(FilePromise::PATHS.size())
+			{
+				PA_YieldAbsolute();
+				
+				if(CALLBACK_IN_NEW_PROCESS)
+				{
+					C_TEXT processName;
+					generateUuid(processName);
+					PA_NewProcess((void *)listenerLoopExecuteMethod,
+												FilePromise::STACK_SIZE,
+												(PA_Unichar *)processName.getUTF16StringPtr());
+				}else
+				{
+					listenerLoopExecuteMethod();
+				}
+				
+				if (FilePromise::PROCESS_SHOULD_TERMINATE)
+					break;
+			}
 			
-			listenerLoopExecuteMethod();
+			FilePromise::PROCESS_SHOULD_RESUME = false;
 			
-			if(FilePromise::PROCESS_SHOULD_TERMINATE)
-				break;
+		}else
+		{
+			PA_PutProcessToSleep(PA_GetCurrentProcessNumber(), CALLBACK_SLEEP_TIME);
 		}
 		
-		if(!FilePromise::PROCESS_SHOULD_TERMINATE)
-		{
-			PA_FreezeProcess(PA_GetCurrentProcessNumber());
-		}
+		if (FilePromise::PROCESS_SHOULD_TERMINATE)
+			break;
 	}
 	
-	[FilePromise::listener release];
-	
-	FilePromise::METHOD_PROCESS_ID = 0;
+	if(1)
+	{
+		std::mutex m;
+		std::lock_guard<std::mutex> lock(m);
+		
+		[FilePromise::listener release];
+		FilePromise::listener = nil;
+		FilePromise::PATHS.clear();
+		FilePromise::LISTENER_METHOD.setUTF16String((PA_Unichar *)"\0\0", 0);
+		FilePromise::METHOD_PROCESS_ID = 0;
+	}
 	
 	PA_KillProcess();
 }
@@ -959,6 +893,10 @@ void listenerLoop()
 
 void listenerLoopStart()
 {
+	std::mutex m;
+	std::lock_guard<std::mutex> lock(m);
+	
+	/* since v17 it is not allowed to call PA_NewProcess() in main process */
 	if(!FilePromise::METHOD_PROCESS_ID)
 	{
 		FilePromise::METHOD_PROCESS_ID = PA_NewProcess((void *)listenerLoop,
@@ -969,77 +907,76 @@ void listenerLoopStart()
 
 void listenerLoopFinish()
 {
+	std::mutex m;
+	std::lock_guard<std::mutex> lock(m);
+	
 	if(FilePromise::METHOD_PROCESS_ID)
 	{
 		FilePromise::PROCESS_SHOULD_TERMINATE = true;
 		
 		PA_YieldAbsolute();
 		
-		FilePromise::PATHS.clear();
-		
-		FilePromise::LISTENER_METHOD.setUTF16String((PA_Unichar *)"\0\0", 0);
-		
-		PA_UnfreezeProcess(FilePromise::METHOD_PROCESS_ID);
+		FilePromise::PROCESS_SHOULD_RESUME = true;
 	}
 }
 
 void listenerLoopExecute()
 {
+	std::mutex m;
+	std::lock_guard<std::mutex> lock(m);
+	
 	FilePromise::PROCESS_SHOULD_TERMINATE = false;
-	PA_UnfreezeProcess(FilePromise::METHOD_PROCESS_ID);
+	FilePromise::PROCESS_SHOULD_RESUME = true;
 }
 
 void listenerLoopExecuteMethod()
 {
+	std::mutex m;
+	std::lock_guard<std::mutex> lock(m);
+	
 	std::vector<CUTF16String>::iterator p = FilePromise::PATHS.begin();
 	
 	method_id_t methodId = PA_GetMethodID((PA_Unichar *)FilePromise::LISTENER_METHOD.getUTF16StringPtr());
 	
-	
-	
 	if(methodId)
 	{
 		PA_Variable	params[2];
-		
-		/* param1 */
 		params[0] = PA_CreateVariable(eVK_Unistring);
-		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)p->c_str());
-		PA_SetStringVariable(&params[0], &command);
-
-		/* param2 */
 		params[1] = PA_CreateVariable(eVK_Unistring);
+		
+		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)p->c_str());
 		PA_Unistring context = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_CONTEXT.getUTF16StringPtr());
+	
+		PA_SetStringVariable(&params[0], &command);
 		PA_SetStringVariable(&params[1], &context);
 		
-		/* execute method */
 		FilePromise::PATHS.erase(p);
+		
 		PA_ExecuteMethodByID(methodId, params, 2);
+		
 		PA_ClearVariable(&params[0]);
 		PA_ClearVariable(&params[1]);
 		
-	}else{
-		
-		/* because PA_GetMethodID does not apply to shared component methods */
-		
+	}else
+	{
 		PA_Variable	params[3];
-		
-		/* param1 */
 		params[1] = PA_CreateVariable(eVK_Unistring);
-		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)p->c_str());
-		PA_SetStringVariable(&params[1], &command);
-		
-		/* param2 */
 		params[2] = PA_CreateVariable(eVK_Unistring);
+		
+		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)p->c_str());
 		PA_Unistring context = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_CONTEXT.getUTF16StringPtr());
+		
+		PA_SetStringVariable(&params[1], &command);
 		PA_SetStringVariable(&params[2], &context);
 		
 		params[0] = PA_CreateVariable(eVK_Unistring);
 		PA_Unistring method = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_METHOD.getUTF16StringPtr());
 		PA_SetStringVariable(&params[0], &method);
 		
-		/* execute method */
-		PA_ExecuteCommandByID(1007, params, 3);
 		FilePromise::PATHS.erase(p);
+		
+		PA_ExecuteCommandByID(1007, params, 3);
+
 		PA_ClearVariable(&params[0]);
 		PA_ClearVariable(&params[1]);
 		PA_ClearVariable(&params[2]);
@@ -1053,17 +990,24 @@ void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams)
 	C_LONGINT Param1;
 	C_TEXT Param2_method;
 	C_TEXT Param3_context;
-	
+
 	Param1.fromParamAtIndex(pParams, 1);
-	FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
-	FilePromise::LISTENER_CONTEXT.fromParamAtIndex(pParams, 3);
 	
-	if(Param1.getIntValue())
+	if(!IsProcessOnExit())
 	{
-		swizzle_on();
-	}else
-	{
-		swizzle_off();
+		std::mutex m;
+		std::lock_guard<std::mutex> lock(m);
+		
+		FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
+		FilePromise::LISTENER_CONTEXT.fromParamAtIndex(pParams, 3);
+		
+		if(Param1.getIntValue())
+		{
+			swizzle_on();
+		}else
+		{
+			swizzle_off();
+		}
 	}
 	
 }

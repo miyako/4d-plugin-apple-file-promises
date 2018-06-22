@@ -8,12 +8,20 @@
  #
  # --------------------------------------------------------------------------------*/
 
-
+#if VERSIONMAC
+#import <objc/runtime.h>
+#import <AppKit/AppKit.h>
+#include "Mail.h"
+#include "Photos.h"
+#include "Outlook.h"
+#endif
+#define CALLBACK_IN_NEW_PROCESS 0
+#define CALLBACK_SLEEP_TIME 59
+#include <mutex>
 
 // --- Apple file promises
 void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams);
 
-void listenerInit(void);
 void listenerLoop(void);
 void listenerLoopStart(void);
 void listenerLoopFinish(void);
@@ -24,3 +32,27 @@ typedef PA_long32 process_number_t;
 typedef PA_long32 process_stack_size_t;
 typedef PA_long32 method_id_t;
 typedef PA_Unichar* process_name_t;
+
+#if VERSIONMAC
+@interface Listener : NSObject
+{
+	FSEventStreamRef stream;
+}
+
+- (void)setURL:(NSURL *)url;
+
+@end
+
+@interface
+
+Swizzle_XMacNSView_saisierec_Class : NSObject <NSDraggingDestination>
+{
+	
+}
+
+- (void)askPhotosToExport:(NSURL *)url;
+- (void)askOutlookToExport:(NSURL *)url;
+- (void)askMailToExport:(NSURL *)url;
+
+@end
+#endif
