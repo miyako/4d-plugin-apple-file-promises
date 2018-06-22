@@ -17,7 +17,27 @@ Accept drag and drop of messages from Apple Mail and Microsoft Outlook
 
 [1.2](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/1.2) [demo](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/demo)
 
-### Discussion
+## Syntax
+
+```
+ACCEPT FILE PROMISES (accept;method{;context})
+```
+
+Parameter|Type|Description
+------------|------------|----
+accept|LONGINT|``1`` or ``0``
+method|TEXT|callback method(``$1:text;$2:text``)
+context|TEXT|any string (``$2`` passed to ``method``)
+
+In ``method`` pass the callback project method name. It will be called with 2 parameters, where ``$1`` is the system full path of the file dropped to 4D, and ``$2`` is a copy of the ``context`` you passed earlier. You can use ``context`` to let the callback notify and update your UI worker/process, for example.
+
+**Note**: You can disable the folder monitoring process by passing ``0`` to the command. 
+
+**Do not abort the callback method**. If you abort the execution context, the process will keep running but the method will not longer be called from the plugin until you reopen the structure file.
+
+---
+
+#### Technical Details
 
 This plugin is designed to add the following functionalities to 4D:
 
@@ -148,19 +168,3 @@ The callback 4D method is executed every time a file is added to the destination
 * Simple API
 
 If neither the app specific types or the file promise types are found, but ``NSFilenamesPboardType`` is found, in other words, a file (not a promise) has been dropped, the same callback 4D method is invoked instantly. 4D does not have to know if the file existed already or was created via scripting or via promises being kept. It just receives a path.
-
-## Syntax
-
-```
-ACCEPT FILE PROMISES (accept;method;context)
-```
-
-Parameter|Type|Description
-------------|------------|----
-accept|LONGINT|``1`` or ``0``
-method|TEXT|
-context|TEXT|optional
-
-In ``method`` pass the callback project method name. It will be called with 2 parameters, where ``$1`` is the system full path of the file dropped to 4D, and ``$2`` is a copy of the ``context`` you passed earlier. You can use ``context`` to let the callback notify and update your UI worker/process, for example.
-
-Passing ``0`` will terminate the folder monitoring process. The plugin does this automatically when you close the application. In fact, you should **NOT** explicitly call the plugin command in your ``On Exit`` event, because it will cause thread synchronisation issues.
