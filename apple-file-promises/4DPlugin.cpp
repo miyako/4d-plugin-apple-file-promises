@@ -19,6 +19,8 @@ static IMP __orig_imp_prepareForDragOperation;
 static IMP __orig_imp_performDragOperation;
 static IMP __orig_imp_concludeDragOperation;
 
+std::mutex globalMutex;
+
 namespace FilePromise
 {
 	Listener *listener = nil;
@@ -382,8 +384,7 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 		 */
 		NSArray *filenames = [sender namesOfPromisedFilesDroppedAtDestination:url];
 		
-		std::mutex m;
-		std::lock_guard<std::mutex> lock(m);
+		std::lock_guard<std::mutex> lock(globalMutex);
 		
 		/* prepare listener for fiel copy */
 		[FilePromise::listener setURL:url];
@@ -408,8 +409,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		{
 			NSURL *url = temporaryDirectory();
 			
-			std::mutex m;
-			std::lock_guard<std::mutex> lock(m);
+			std::lock_guard<std::mutex> lock(globalMutex);
 			
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
@@ -426,8 +426,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		{
 			NSURL *url = temporaryDirectory();
 			
-			std::mutex m;
-			std::lock_guard<std::mutex> lock(m);
+			std::lock_guard<std::mutex> lock(globalMutex);
 			
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
@@ -444,8 +443,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		{
 			NSURL *url = temporaryDirectory();
 			
-			std::mutex m;
-			std::lock_guard<std::mutex> lock(m);
+			std::lock_guard<std::mutex> lock(globalMutex);
 			
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
@@ -480,8 +478,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 				CUTF16String u16;
 				t.copyUTF16String(&u16);
 				
-				std::mutex m;
-				std::lock_guard<std::mutex> lock(m);
+				std::lock_guard<std::mutex> lock(globalMutex);
 				
 				FilePromise::PATHS.push_back(u16);
 				
@@ -528,8 +525,7 @@ void gotEvent(FSEventStreamRef stream,
 					CUTF16String u16;
 					t.copyUTF16String(&u16);
 					
-					std::mutex m;
-					std::lock_guard<std::mutex> lock(m);
+					std::lock_guard<std::mutex> lock(globalMutex);
 					
 					FilePromise::PATHS.push_back(u16);
 				
@@ -828,8 +824,7 @@ void listenerLoop()
 {
 	if(1)
 	{
-		std::mutex m;
-		std::lock_guard<std::mutex> lock(m);
+		std::lock_guard<std::mutex> lock(globalMutex);
 		
 		FilePromise::listener = [[Listener alloc]init];
 		FilePromise::PROCESS_SHOULD_TERMINATE = false;
@@ -839,8 +834,7 @@ void listenerLoop()
 	{
 		PA_YieldAbsolute();
 		
-		std::mutex m;
-		std::lock_guard<std::mutex> lock(m);
+		std::lock_guard<std::mutex> lock(globalMutex);
 		
 		if(FilePromise::PROCESS_SHOULD_RESUME)
 		{
@@ -877,8 +871,7 @@ void listenerLoop()
 	
 	if(1)
 	{
-		std::mutex m;
-		std::lock_guard<std::mutex> lock(m);
+		std::lock_guard<std::mutex> lock(globalMutex);
 		
 		[FilePromise::listener release];
 		FilePromise::listener = nil;
@@ -893,8 +886,7 @@ void listenerLoop()
 
 void listenerLoopStart()
 {
-	std::mutex m;
-	std::lock_guard<std::mutex> lock(m);
+	std::lock_guard<std::mutex> lock(globalMutex);
 	
 	/* since v17 it is not allowed to call PA_NewProcess() in main process */
 	if(!FilePromise::METHOD_PROCESS_ID)
@@ -907,8 +899,7 @@ void listenerLoopStart()
 
 void listenerLoopFinish()
 {
-	std::mutex m;
-	std::lock_guard<std::mutex> lock(m);
+	std::lock_guard<std::mutex> lock(globalMutex);
 	
 	if(FilePromise::METHOD_PROCESS_ID)
 	{
@@ -922,8 +913,7 @@ void listenerLoopFinish()
 
 void listenerLoopExecute()
 {
-	std::mutex m;
-	std::lock_guard<std::mutex> lock(m);
+	std::lock_guard<std::mutex> lock(globalMutex);
 	
 	FilePromise::PROCESS_SHOULD_TERMINATE = false;
 	FilePromise::PROCESS_SHOULD_RESUME = true;
@@ -931,8 +921,7 @@ void listenerLoopExecute()
 
 void listenerLoopExecuteMethod()
 {
-	std::mutex m;
-	std::lock_guard<std::mutex> lock(m);
+	std::lock_guard<std::mutex> lock(globalMutex);
 	
 	std::vector<CUTF16String>::iterator p = FilePromise::PATHS.begin();
 	
@@ -995,8 +984,7 @@ void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams)
 	
 	if(!IsProcessOnExit())
 	{
-		std::mutex m;
-		std::lock_guard<std::mutex> lock(m);
+		std::lock_guard<std::mutex> lock(globalMutex);
 		
 		FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
 		FilePromise::LISTENER_CONTEXT.fromParamAtIndex(pParams, 3);
