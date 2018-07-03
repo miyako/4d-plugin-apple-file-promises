@@ -20,7 +20,6 @@ static IMP __orig_imp_performDragOperation;
 static IMP __orig_imp_concludeDragOperation;
 
 std::mutex globalMutex;
-std::mutex globalMutex2;
 
 namespace FilePromise
 {
@@ -403,7 +402,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 	NSPasteboard *pboard = [sender draggingPasteboard];
 	NSArray *types = [pboard types];
 
-	if(true)
+	if(1)
 	{
 		/* resolves as "?0=6:4=ERMessagePasteboardType" */
 		if ([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"])
@@ -421,7 +420,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		}
 	}
 	
-	if(true)
+	if(1)
 	{
 		if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeAutomator"])
 		{
@@ -526,43 +525,16 @@ void gotEvent(FSEventStreamRef stream,
 					CUTF16String u16;
 					t.copyUTF16String(&u16);
 					
-					std::lock_guard<std::mutex> lock(globalMutex);
+					if(1)
+					{
+						std::lock_guard<std::mutex> lock(globalMutex);
+						
+						FilePromise::PATHS.push_back(u16);
+					}
 					
-					FilePromise::PATHS.push_back(u16);
-				
 					[path release];
 					
 					listenerLoopExecute();
-					
-					/*
-					 
-					 mail exports in 1 step
-					 
-					 message.eml, flag:108544 0x0001A800
-					 kFSEventStreamEventFlagItemIsFile 0x00010000
-					 kFSEventStreamEventFlagItemFinderInfoMod 0x00002000
-					 kFSEventStreamEventFlagItemXattrMod 0x00008000
-					 kFSEventStreamEventFlagItemRenamed 0x00000800
-					 
-					 photos exports in several steps
-					 
-					 image.jpg.exporting, flag:98560 0x00018100
-					 kFSEventStreamEventFlagItemIsFile 0x00010000
-					 kFSEventStreamEventFlagItemXattrMod 0x00008000
-					 kFSEventStreamEventFlagItemCreated 0x00000100
-					 
-					 image.jpg.exporting, flag:100608 0x00018900
-					 kFSEventStreamEventFlagItemIsFile 0x00010000
-					 kFSEventStreamEventFlagItemXattrMod 0x00008000
-					 kFSEventStreamEventFlagItemCreated 0x00000100
-					 kFSEventStreamEventFlagItemRenamed 0x00000800
-					 
-					 image.jpg, flag:71680 0x00011800
-					 kFSEventStreamEventFlagItemIsFile 0x00010000
-					 kFSEventStreamEventFlagItemModified 0x00001000
-					 kFSEventStreamEventFlagItemRenamed 0x00000800
-					 
-					 */
 				}
 			}
 		}
@@ -835,7 +807,7 @@ void listenerLoop()
 	{
 		PA_YieldAbsolute();
 		
-		std::lock_guard<std::mutex> lock(globalMutex2);
+//		std::lock_guard<std::mutex> lock(globalMutex);
 		
 		if(FilePromise::PROCESS_SHOULD_RESUME)
 		{
@@ -887,7 +859,7 @@ void listenerLoop()
 
 void listenerLoopStart()
 {
-	std::lock_guard<std::mutex> lock(globalMutex);
+//	std::lock_guard<std::mutex> lock(globalMutex);
 	
 	/* since v17 it is not allowed to call PA_NewProcess() in main process */
 	if(!FilePromise::METHOD_PROCESS_ID)
@@ -985,10 +957,13 @@ void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams)
 	
 	if(!IsProcessOnExit())
 	{
-		std::lock_guard<std::mutex> lock(globalMutex);
-		
-		FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
-		FilePromise::LISTENER_CONTEXT.fromParamAtIndex(pParams, 3);
+		if(1)
+		{
+			std::lock_guard<std::mutex> lock(globalMutex);
+			
+			FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
+			FilePromise::LISTENER_CONTEXT.fromParamAtIndex(pParams, 3);
+		}
 		
 		if(Param1.getIntValue())
 		{
@@ -998,6 +973,4 @@ void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams)
 			swizzle_off();
 		}
 	}
-	
 }
-
