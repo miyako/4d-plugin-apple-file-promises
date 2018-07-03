@@ -20,6 +20,7 @@ static IMP __orig_imp_performDragOperation;
 static IMP __orig_imp_concludeDragOperation;
 
 std::mutex globalMutex;
+std::mutex globalMutex2;
 
 namespace FilePromise
 {
@@ -834,7 +835,7 @@ void listenerLoop()
 	{
 		PA_YieldAbsolute();
 		
-		std::lock_guard<std::mutex> lock(globalMutex);
+		std::lock_guard<std::mutex> lock(globalMutex2);
 		
 		if(FilePromise::PROCESS_SHOULD_RESUME)
 		{
