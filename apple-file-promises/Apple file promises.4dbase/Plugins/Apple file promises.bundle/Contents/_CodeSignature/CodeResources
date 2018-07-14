@@ -100,7 +100,7 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			6D3cPjAKf6wkuiq1/b0mgwQ6Nos=
+			sLdqodlOg7+EBeZUICEsy8ekDnI=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -380,11 +380,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			6D3cPjAKf6wkuiq1/b0mgwQ6Nos=
+			sLdqodlOg7+EBeZUICEsy8ekDnI=
 			</data>
 			<key>hash2</key>
 			<data>
-			43EI1scbuOSOT9E7rb0+7e7WNQg3plhtM/X1pQ/NTI0=
+			rAVoblaRdYFaqTNU0K569cODjdg7MoqqRSwEGtYoLbE=
 			</data>
 			<key>optional</key>
 			<true/>
@@ -450,6 +450,11 @@
 			<key>weight</key>
 			<real>1100</real>
 		</dict>
+		<key>^Resources/Base\.lproj/</key>
+		<dict>
+			<key>weight</key>
+			<real>1010</real>
+		</dict>
 		<key>^version.plist$</key>
 		<true/>
 	</dict>
@@ -508,6 +513,11 @@
 			<true/>
 			<key>weight</key>
 			<real>1100</real>
+		</dict>
+		<key>^Resources/Base\.lproj/</key>
+		<dict>
+			<key>weight</key>
+			<real>1010</real>
 		</dict>
 		<key>^[^/]+$</key>
 		<dict>

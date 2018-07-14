@@ -20,6 +20,7 @@ static IMP __orig_imp_performDragOperation;
 static IMP __orig_imp_concludeDragOperation;
 
 std::mutex globalMutex;
+std::mutex globalMutex0;
 
 namespace FilePromise
 {
@@ -695,6 +696,13 @@ void OnStartup()
 
 }
 
+
+void OnExit()
+{
+    swizzle_off();
+}
+
+/*
 void OnCloseProcess()
 {
 	if(IsProcessOnExit())
@@ -702,6 +710,7 @@ void OnCloseProcess()
 		swizzle_off();
 	}
 }
+ */
 
 #pragma mark -
 
@@ -713,10 +722,16 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 		case kServerInitPlugin :
 			OnStartup();
 			break;
-			
+
+        case kDeinitPlugin :
+            OnExit();
+            break;
+            
+            /*
 		case kCloseProcess :
 			OnCloseProcess();
 			break;
+             */
 			
 			// --- Apple file promises
 			
@@ -807,10 +822,11 @@ void listenerLoop()
 	{
 		PA_YieldAbsolute();
 		
-//		std::lock_guard<std::mutex> lock(globalMutex);
+        std::lock_guard<std::mutex> lock(globalMutex0);
 		
 		if(FilePromise::PROCESS_SHOULD_RESUME)
 		{
+            
 			while(FilePromise::PATHS.size())
 			{
 				PA_YieldAbsolute();
@@ -859,9 +875,8 @@ void listenerLoop()
 
 void listenerLoopStart()
 {
-//	std::lock_guard<std::mutex> lock(globalMutex);
+    std::lock_guard<std::mutex> lock(globalMutex0);
 	
-	/* since v17 it is not allowed to call PA_NewProcess() in main process */
 	if(!FilePromise::METHOD_PROCESS_ID)
 	{
 		FilePromise::METHOD_PROCESS_ID = PA_NewProcess((void *)listenerLoop,
