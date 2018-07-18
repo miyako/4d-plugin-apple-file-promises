@@ -157,6 +157,7 @@ void sb_tell_mail_to_export(NSURL *url)
 		{
 			NSArray *mails = [application selection];
 			NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
+            
 			NSUInteger i = 0;
 			
 			NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
@@ -164,9 +165,10 @@ void sb_tell_mail_to_export(NSURL *url)
 			for (id source in sources) {
 				i++;
 				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
+        
 				[(NSString *)source writeToFile:dst
 														 atomically:NO /* avoid catching the atomic write files */
-															 encoding:NSUTF8StringEncoding
+															 encoding:NSWindowsCP1252StringEncoding /* NSUTF8StringEncoding */
 																	error:nil];
 			}
 		}
@@ -197,8 +199,8 @@ void sb_tell_outlook_to_export(NSURL *url)
 					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
 					NSLog(@"%@", dst);
 					[(NSString *)source writeToFile:dst
-															 atomically:NO /* avoid catching the atmic write files */
-																 encoding:NSUTF8StringEncoding
+															 atomically:NO /* avoid catching the atomic write files */
+																 encoding:NSWindowsCP1252StringEncoding /* NSUTF8StringEncoding */
 																		error:nil];
 				}
 			}
