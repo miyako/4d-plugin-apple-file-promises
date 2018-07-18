@@ -824,12 +824,27 @@ void listenerLoop()
 	{
 		PA_YieldAbsolute();
 		
-        std::lock_guard<std::mutex> lock(globalMutex0);
-		
-		if(FilePromise::PROCESS_SHOULD_RESUME)
+        bool PROCESS_SHOULD_RESUME;
+        bool PROCESS_SHOULD_TERMINATE;
+        
+        if(1)
+        {
+            std::lock_guard<std::mutex> lock(globalMutex);
+            PROCESS_SHOULD_RESUME = FilePromise::PROCESS_SHOULD_RESUME;
+            PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
+        }
+        
+		if(PROCESS_SHOULD_RESUME)
 		{
+            size_t PATHS;
             
-			while(FilePromise::PATHS.size())
+            if(1)
+            {
+                std::lock_guard<std::mutex> lock(globalMutex);
+                PATHS = FilePromise::PATHS.size();
+            }
+            
+			while(PATHS)
 			{
 				PA_YieldAbsolute();
 				
@@ -845,18 +860,35 @@ void listenerLoop()
 					listenerLoopExecuteMethod();
 				}
 				
-				if (FilePromise::PROCESS_SHOULD_TERMINATE)
+				if (PROCESS_SHOULD_TERMINATE)
 					break;
+                
+                if(1)
+                {
+                    std::lock_guard<std::mutex> lock(globalMutex);
+                    PATHS = FilePromise::PATHS.size();
+                    PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
+                }
 			}
-			
-			FilePromise::PROCESS_SHOULD_RESUME = false;
-			
+            
+            if(1)
+            {
+                std::lock_guard<std::mutex> lock(globalMutex);
+                FilePromise::PROCESS_SHOULD_RESUME = false;
+            }
+
 		}else
 		{
 			PA_PutProcessToSleep(PA_GetCurrentProcessNumber(), CALLBACK_SLEEP_TIME);
 		}
 		
-		if (FilePromise::PROCESS_SHOULD_TERMINATE)
+        if(1)
+        {
+            std::lock_guard<std::mutex> lock(globalMutex);
+            PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
+        }
+        
+		if (PROCESS_SHOULD_TERMINATE)
 			break;
 	}
 	
