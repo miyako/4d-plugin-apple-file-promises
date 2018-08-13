@@ -19,8 +19,21 @@
 #define CALLBACK_SLEEP_TIME 59
 #include <mutex>
 
+//#include "preemptive_methods.h"
+
+/*
+ 
+ not preemptive because of
+ 
+ - PA_NewProcess
+ 
+ */
+
 // --- Apple file promises
 void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams);
+
+void listener_start(void);
+void listener_end(void);
 
 void listenerLoop(void);
 void listenerLoopStart(void);

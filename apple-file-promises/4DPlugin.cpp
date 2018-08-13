@@ -19,21 +19,27 @@ static IMP __orig_imp_prepareForDragOperation;
 static IMP __orig_imp_performDragOperation;
 static IMP __orig_imp_concludeDragOperation;
 
-std::mutex globalMutex;
-std::mutex globalMutex0;
+std::mutex globalMutex; /* PATHS,LISTENER_CONTEXT */
+std::mutex globalMutex1;/* for METHOD_PROCESS_ID */
+std::mutex globalMutex2;/* for LISTENER_METHOD */
+std::mutex globalMutex3;/* PROCESS_SHOULD_TERMINATE */
+std::mutex globalMutex4;/* PROCESS_SHOULD_RESUME */
 
 namespace FilePromise
 {
 	Listener *listener = nil;
 	
-	process_number_t METHOD_PROCESS_ID = 0;
+    //constants
 	process_stack_size_t STACK_SIZE = 0;
 	const process_name_t PROCESS_NAME = (PA_Unichar *)"$\0A\0F\0P\0\0\0";
 	
-	C_TEXT LISTENER_METHOD;
+    //context management
 	std::vector<CUTF16String>PATHS;
 	C_TEXT LISTENER_CONTEXT;
 	
+    //callback management
+    C_TEXT LISTENER_METHOD;
+    process_number_t METHOD_PROCESS_ID = 0;
 	bool PROCESS_SHOULD_TERMINATE = false;
 	bool PROCESS_SHOULD_RESUME = false;
 }
@@ -166,14 +172,19 @@ void sb_tell_mail_to_export(NSURL *url)
 				i++;
 				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
         
-				[(NSString *)source writeToFile:dst
-														 atomically:NO /* avoid catching the atomic write files */
-															 encoding:NSWindowsCP1252StringEncoding /* NSUTF8StringEncoding */
-																	error:nil];
+                if(![(NSString *)source writeToFile:dst
+                                         atomically:NO /* avoid catching the atomic write files */
+                                           encoding:NSWindowsCP1252StringEncoding
+                                              error:nil])
+                {
+                    [(NSString *)source writeToFile:dst
+                                         atomically:NO /* avoid catching the atomic write files */
+                                           encoding:NSUTF8StringEncoding
+                                              error:nil];
+                }
 			}
 		}
 	}
-	
 }
 
 void sb_tell_outlook_to_export(NSURL *url)
@@ -198,10 +209,17 @@ void sb_tell_outlook_to_export(NSURL *url)
 					i++;
 					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
 					NSLog(@"%@", dst);
-					[(NSString *)source writeToFile:dst
-															 atomically:NO /* avoid catching the atomic write files */
-																 encoding:NSWindowsCP1252StringEncoding /* NSUTF8StringEncoding */
-																		error:nil];
+                    
+                    if(![(NSString *)source writeToFile:dst
+                                             atomically:NO /* avoid catching the atomic write files */
+                                               encoding:NSWindowsCP1252StringEncoding
+                                                  error:nil])
+                    {
+                        [(NSString *)source writeToFile:dst
+                                             atomically:NO /* avoid catching the atomic write files */
+                                               encoding:NSUTF8StringEncoding
+                                                  error:nil];
+                    }
 				}
 			}
 		}
@@ -386,9 +404,7 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 		 * https://developer.apple.com/documentation/appkit/nsdragginginfo/1415980-namesofpromisedfilesdroppedatdes
 		 */
 		NSArray *filenames = [sender namesOfPromisedFilesDroppedAtDestination:url];
-		
-		std::lock_guard<std::mutex> lock(globalMutex);
-		
+				
 		/* prepare listener for fiel copy */
 		[FilePromise::listener setURL:url];
 	}
@@ -411,9 +427,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		if ([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"])
 		{
 			NSURL *url = temporaryDirectory();
-			
-			std::lock_guard<std::mutex> lock(globalMutex);
-			
+						
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
 			
@@ -428,9 +442,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeAutomator"])
 		{
 			NSURL *url = temporaryDirectory();
-			
-			std::lock_guard<std::mutex> lock(globalMutex);
-			
+						
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
 			
@@ -445,9 +457,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 		if ([types containsObject:(NSString *)@"com.apple.PhotoPrintProduct.photoUUID"])
 		{
 			NSURL *url = temporaryDirectory();
-			
-			std::lock_guard<std::mutex> lock(globalMutex);
-			
+						
 			/* prepare listener for file copy */
 			[FilePromise::listener setURL:url];
 			
@@ -481,10 +491,13 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 				CUTF16String u16;
 				t.copyUTF16String(&u16);
 				
-				std::lock_guard<std::mutex> lock(globalMutex);
-				
-				FilePromise::PATHS.push_back(u16);
-				
+                if(1)
+                {
+                    std::lock_guard<std::mutex> lock(globalMutex);
+                    
+                    FilePromise::PATHS.push_back(u16);
+                }
+
 				[path release];
 			}
 			
@@ -647,6 +660,7 @@ void swizzle_on()
 	{
 		swizzle_XMacNSView_saisierec = [[Swizzle_XMacNSView_saisierec_Class alloc]init];
 	}
+    PA_RunInMainProcess((PA_RunInMainProcessProcPtr)listener_start, NULL);
 	listenerLoopStart();
 #endif
 }
@@ -810,16 +824,33 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 
 #pragma mark -
 
-void listenerLoop()
+void listener_start()
 {
+    if(!FilePromise::listener)
+    {
+        FilePromise::listener = [[Listener alloc]init];
+    }
+}
+
+void listener_end()
+{
+    /* must do this in main process */
+    [FilePromise::listener release];
+    FilePromise::listener = nil;
+}
+
+void listenerLoop()
+{    
 	if(1)
 	{
-		std::lock_guard<std::mutex> lock(globalMutex);
-		
-		FilePromise::listener = [[Listener alloc]init];
+         std::lock_guard<std::mutex> lock(globalMutex3);
+
 		FilePromise::PROCESS_SHOULD_TERMINATE = false;
 	}
-
+    
+    /* Current process returns 0 for PA_NewProcess */
+    PA_long32 currentProcessNumber = PA_GetCurrentProcessNumber();
+    
 	while(!PA_IsProcessDying())
 	{
 		PA_YieldAbsolute();
@@ -829,7 +860,6 @@ void listenerLoop()
         
         if(1)
         {
-            std::lock_guard<std::mutex> lock(globalMutex);
             PROCESS_SHOULD_RESUME = FilePromise::PROCESS_SHOULD_RESUME;
             PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
         }
@@ -841,6 +871,7 @@ void listenerLoop()
             if(1)
             {
                 std::lock_guard<std::mutex> lock(globalMutex);
+                
                 PATHS = FilePromise::PATHS.size();
             }
             
@@ -866,6 +897,7 @@ void listenerLoop()
                 if(1)
                 {
                     std::lock_guard<std::mutex> lock(globalMutex);
+                    
                     PATHS = FilePromise::PATHS.size();
                     PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
                 }
@@ -873,18 +905,19 @@ void listenerLoop()
             
             if(1)
             {
-                std::lock_guard<std::mutex> lock(globalMutex);
+                std::lock_guard<std::mutex> lock(globalMutex4);
+                
                 FilePromise::PROCESS_SHOULD_RESUME = false;
             }
 
 		}else
 		{
-			PA_PutProcessToSleep(PA_GetCurrentProcessNumber(), CALLBACK_SLEEP_TIME);
+            /* DELAY PROCESS does not work for PA_NewProcess */
+			PA_PutProcessToSleep(currentProcessNumber, CALLBACK_SLEEP_TIME);
 		}
 		
         if(1)
         {
-            std::lock_guard<std::mutex> lock(globalMutex);
             PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
         }
         
@@ -896,57 +929,98 @@ void listenerLoop()
 	{
 		std::lock_guard<std::mutex> lock(globalMutex);
 		
-		[FilePromise::listener release];
-		FilePromise::listener = nil;
 		FilePromise::PATHS.clear();
-		FilePromise::LISTENER_METHOD.setUTF16String((PA_Unichar *)"\0\0", 0);
-		FilePromise::METHOD_PROCESS_ID = 0;
 	}
+    
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex2);
+        
+        FilePromise::LISTENER_METHOD.setUTF16String((PA_Unichar *)"\0\0", 0);
+    }
+    
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex1);
+        
+        FilePromise::METHOD_PROCESS_ID = 0;
+    }
 	
+    PA_RunInMainProcess((PA_RunInMainProcessProcPtr)listener_end, NULL);
+    
 	PA_KillProcess();
 }
 
 
 void listenerLoopStart()
 {
-    std::lock_guard<std::mutex> lock(globalMutex0);
-	
-	if(!FilePromise::METHOD_PROCESS_ID)
-	{
-		FilePromise::METHOD_PROCESS_ID = PA_NewProcess((void *)listenerLoop,
-																					FilePromise::STACK_SIZE,
-																					FilePromise::PROCESS_NAME);
-	}
+    if(!FilePromise::METHOD_PROCESS_ID)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex1);
+        
+        FilePromise::METHOD_PROCESS_ID = PA_NewProcess((void *)listenerLoop,
+                                                       FilePromise::STACK_SIZE,
+                                                       FilePromise::PROCESS_NAME);
+    }
 }
 
 void listenerLoopFinish()
 {
-	std::lock_guard<std::mutex> lock(globalMutex);
-	
 	if(FilePromise::METHOD_PROCESS_ID)
 	{
-		FilePromise::PROCESS_SHOULD_TERMINATE = true;
-		
+        if(1)
+        {
+            std::lock_guard<std::mutex> lock(globalMutex3);
+            
+            FilePromise::PROCESS_SHOULD_TERMINATE = true;
+        }
+
 		PA_YieldAbsolute();
-		
-		FilePromise::PROCESS_SHOULD_RESUME = true;
+        
+        if(1)
+        {
+            std::lock_guard<std::mutex> lock(globalMutex4);
+            
+            FilePromise::PROCESS_SHOULD_RESUME = true;
+        }
 	}
 }
 
 void listenerLoopExecute()
 {
-	std::lock_guard<std::mutex> lock(globalMutex);
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex3);
+        
+        FilePromise::PROCESS_SHOULD_TERMINATE = false;
+    }
+    
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex4);
+        
+        FilePromise::PROCESS_SHOULD_RESUME = true;
+    }
 	
-	FilePromise::PROCESS_SHOULD_TERMINATE = false;
-	FilePromise::PROCESS_SHOULD_RESUME = true;
 }
 
 void listenerLoopExecuteMethod()
 {
-	std::lock_guard<std::mutex> lock(globalMutex);
-	
-	std::vector<CUTF16String>::iterator p = FilePromise::PATHS.begin();
-	
+    CUTF16String __PATH;
+
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex);
+
+        std::vector<CUTF16String>::iterator p;
+        
+        p = FilePromise::PATHS.begin();
+        
+        __PATH = *p;
+        
+        FilePromise::PATHS.erase(p);
+    }
+    
 	method_id_t methodId = PA_GetMethodID((PA_Unichar *)FilePromise::LISTENER_METHOD.getUTF16StringPtr());
 	
 	if(methodId)
@@ -955,13 +1029,11 @@ void listenerLoopExecuteMethod()
 		params[0] = PA_CreateVariable(eVK_Unistring);
 		params[1] = PA_CreateVariable(eVK_Unistring);
 		
-		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)p->c_str());
+		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)__PATH.c_str());
 		PA_Unistring context = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_CONTEXT.getUTF16StringPtr());
 	
 		PA_SetStringVariable(&params[0], &command);
 		PA_SetStringVariable(&params[1], &context);
-		
-		FilePromise::PATHS.erase(p);
 		
 		PA_ExecuteMethodByID(methodId, params, 2);
 		
@@ -974,7 +1046,7 @@ void listenerLoopExecuteMethod()
 		params[1] = PA_CreateVariable(eVK_Unistring);
 		params[2] = PA_CreateVariable(eVK_Unistring);
 		
-		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)p->c_str());
+		PA_Unistring command = PA_CreateUnistring((PA_Unichar *)__PATH.c_str());
 		PA_Unistring context = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_CONTEXT.getUTF16StringPtr());
 		
 		PA_SetStringVariable(&params[1], &command);
@@ -984,8 +1056,7 @@ void listenerLoopExecuteMethod()
 		PA_Unistring method = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_METHOD.getUTF16StringPtr());
 		PA_SetStringVariable(&params[0], &method);
 		
-		FilePromise::PATHS.erase(p);
-		
+        /* execute method */
 		PA_ExecuteCommandByID(1007, params, 3);
 
 		PA_ClearVariable(&params[0]);
@@ -1006,11 +1077,17 @@ void ACCEPT_FILE_PROMISES(sLONG_PTR *pResult, PackagePtr pParams)
 	
 	if(!IsProcessOnExit())
 	{
+        if(1)
+        {
+            std::lock_guard<std::mutex> lock(globalMutex2);
+            
+            FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
+        }
+        
 		if(1)
 		{
 			std::lock_guard<std::mutex> lock(globalMutex);
-			
-			FilePromise::LISTENER_METHOD.fromParamAtIndex(pParams, 2);
+
 			FilePromise::LISTENER_CONTEXT.fromParamAtIndex(pParams, 3);
 		}
 		
