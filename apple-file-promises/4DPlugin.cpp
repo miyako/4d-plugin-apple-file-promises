@@ -206,9 +206,10 @@ void sb_tell_outlook_to_export(NSURL *url)
 				NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
 				
 				for (id source in sources) {
-					i++;
+					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\n"];
+                    i++;
 					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
-					NSLog(@"%@", dst);
+//                    NSLog(@"%@", dst);
                     
                     if(![(NSString *)source writeToFile:dst
                                              atomically:NO /* avoid catching the atomic write files */
@@ -253,7 +254,7 @@ NSDragOperation __swiz_draggingEntered(id self, SEL _cmd, id sender)
 			 {
 				 if([types containsObject:(NSString *)kPasteboardTypeFilePromiseContent])
 				 {
-					 NSLog(@"content types:%@", [pboard stringForType:(NSString *)kPasteboardTypeFilePromiseContent]);
+//                     NSLog(@"content types:%@", [pboard stringForType:(NSString *)kPasteboardTypeFilePromiseContent]);
 				 }
 			 }
 
@@ -278,7 +279,7 @@ NSDragOperation __swiz_draggingEntered(id self, SEL _cmd, id sender)
 																										 (NSString *)kPasteboardTypeFileURLPromise,
                                                                                                          @"com.apple.pasteboard.promised-file-name", @"com.apple.pasteboard.NSFilePromiseID"]];
 								 NSArray *registeredDraggedTypes = [mainView registeredDraggedTypes];
-								 NSLog(@"registered types:%@", registeredDraggedTypes);//com.apple.pasteboard.promised-file-url
+//                                 NSLog(@"registered types:%@", registeredDraggedTypes);//com.apple.pasteboard.promised-file-url
 							 }
 						 }
 					 }
@@ -329,7 +330,7 @@ BOOL __swiz_prepareForDragOperation(id self, SEL _cmd, id sender)
 																	 usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
 		 {
 			 /* for each item (file, folder...) being dragged over */
-			 NSLog(@"draggingEntered:draggingItemTypes:%@", [[draggingItem item]types]);
+//             NSLog(@"draggingEntered:draggingItemTypes:%@", [[draggingItem item]types]);
 		 }];
 	}
 	
@@ -378,7 +379,7 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 		if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeMessageTransfer"])
 		{
 			/* contains the path to .mbox of the mailbox */
-			NSLog(@"photoUUID:%@", [pboard stringForType:@"com.apple.mail.PasteboardTypeMessageTransfer"]);
+//            NSLog(@"photoUUID:%@", [pboard stringForType:@"com.apple.mail.PasteboardTypeMessageTransfer"]);
 		}
 	}
 	
@@ -386,12 +387,12 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
     {
         if ([types containsObject:(NSString *)@"com.apple.pasteboard.promised-file-name"])
         {
-            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.promised-file-name"]);
+//            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.promised-file-name"]);
         }
         
         if ([types containsObject:(NSString *)@"com.apple.pasteboard.NSFilePromiseID"])
         {
-            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.NSFilePromiseID"]);
+//            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.NSFilePromiseID"]);
         }
     }
 
