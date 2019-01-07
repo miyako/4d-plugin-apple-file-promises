@@ -164,24 +164,59 @@ void sb_tell_mail_to_export(NSURL *url)
 			NSArray *mails = [application selection];
 			NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
             
+            /*
+             NSString *pattern1 = @"^content-transfer-encoding\\s*:.*8bit.*$";
+             NSString *pattern2 = @"^content-type\\s*:.*charset\\s*=\\s*utf-?8.*$";
+             NSRegularExpression *regex1 = [NSRegularExpression
+             regularExpressionWithPattern:pattern1
+             options:NSRegularExpressionCaseInsensitive
+             |NSRegularExpressionAnchorsMatchLines
+             error:nil];
+             NSRegularExpression *regex2 = [NSRegularExpression
+             regularExpressionWithPattern:pattern2
+             options:NSRegularExpressionCaseInsensitive
+             |NSRegularExpressionAnchorsMatchLines
+             error:nil];
+             */
+
 			NSUInteger i = 0;
 			
 			NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
 			
 			for (id source in sources) {
+                
+                /*
+                 
+                 always use NSISOLatin1StringEncoding
+                 
+                 NSRange range = [regex1 rangeOfFirstMatchInString:source
+                 options:0
+                 range:NSMakeRange(0, [source length])];
+                 
+                 if(range.location != NSNotFound)
+                 {
+                 range = [regex2 rangeOfFirstMatchInString:source
+                 options:0
+                 range:NSMakeRange(0, [source length])];
+                 if(range.location != NSNotFound)
+                 {
+                 encoding = NSISOLatin1StringEncoding;
+                 }
+                 }
+                 
+                 */
+                
+                NSStringEncoding encoding = NSISOLatin1StringEncoding;
+                
 				i++;
 				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
         
-                if(![(NSString *)source writeToFile:dst
-                                         atomically:NO /* avoid catching the atomic write files */
-                                           encoding:NSWindowsCP1252StringEncoding
-                                              error:nil])
-                {
-                    [(NSString *)source writeToFile:dst
-                                         atomically:NO /* avoid catching the atomic write files */
-                                           encoding:NSUTF8StringEncoding
-                                              error:nil];
-                }
+                NSLog(@"%@", source);
+                
+                [(NSString *)source writeToFile:dst
+                                     atomically:NO /* avoid catching the atomic write files */
+                                       encoding:encoding
+                                          error:nil];
 			}
 		}
 	}
@@ -201,26 +236,24 @@ void sb_tell_outlook_to_export(NSURL *url)
 			{
 				NSArray *mails = [application selectedObjects];
 				NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
+                
 				NSUInteger i = 0;
 				
 				NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
 				
 				for (id source in sources) {
+                    
+                    NSStringEncoding encoding = NSWindowsCP1252StringEncoding;
+                    
 					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\n"];
+                    
                     i++;
 					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
-//                    NSLog(@"%@", dst);
                     
-                    if(![(NSString *)source writeToFile:dst
-                                             atomically:NO /* avoid catching the atomic write files */
-                                               encoding:NSWindowsCP1252StringEncoding
-                                                  error:nil])
-                    {
-                        [(NSString *)source writeToFile:dst
-                                             atomically:NO /* avoid catching the atomic write files */
-                                               encoding:NSUTF8StringEncoding
-                                                  error:nil];
-                    }
+                    [(NSString *)source writeToFile:dst
+                                         atomically:NO /* avoid catching the atomic write files */
+                                           encoding:NSISOLatin1StringEncoding
+                                              error:nil];
 				}
 			}
 		}
