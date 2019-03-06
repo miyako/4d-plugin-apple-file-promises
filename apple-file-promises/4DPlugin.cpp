@@ -11,6 +11,52 @@
 #include "4DPluginAPI.h"
 #include "4DPlugin.h"
 
+#ifndef errAEEventWouldRequireUserConsent
+enum {
+    errAEEventWouldRequireUserConsent     =     -1744
+};
+#endif
+
+void requestPermission(NSString *bundleIdentifier){
+    
+    if (@available(macOS 10.14, *)) {
+        OSStatus status;
+        
+        /*
+         alternatively
+         NSAppleEventDescriptor *targetAppEventDescriptor;
+         targetAppEventDescriptor = [NSAppleEventDescriptor descriptorWithBundleIdentifier:@"com.apple.Notes"];
+         and pass targetAppEventDescriptor.aeDesc to AEDeterminePermissionToAutomateTarget()
+         */
+        
+        AEAddressDesc addressDesc;
+        
+        const char *bundleIdentifierCString = [bundleIdentifier cStringUsingEncoding:NSUTF8StringEncoding];
+        if(AECreateDesc(typeApplicationBundleID, bundleIdentifierCString, strlen(bundleIdentifierCString), &addressDesc) == noErr)
+        {
+            status = AEDeterminePermissionToAutomateTarget(&addressDesc, typeWildCard, typeWildCard, true);
+            AEDisposeDesc(&addressDesc);
+            
+            switch (status) {
+                case errAEEventWouldRequireUserConsent:
+                    NSLog(@"Automation permission pending for %@", bundleIdentifier);
+                    break;
+                case noErr:
+                    NSLog(@"Automation permission granted for %@", bundleIdentifier);
+                    break;
+                case errAEEventNotPermitted:
+                    NSLog(@"Automation permission denied for %@", bundleIdentifier);
+                    break;
+                case procNotFound:
+                    NSLog(@"Automation permission unknown for %@", bundleIdentifier);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
 Swizzle_XMacNSView_saisierec_Class *swizzle_XMacNSView_saisierec = nil;
 
 static IMP __orig_imp_draggingEntered;
@@ -743,7 +789,9 @@ bool IsProcessOnExit()
 
 void OnStartup()
 {
-
+    requestPermission(@"com.apple.mail");
+    requestPermission(@"com.apple.Photos");
+    requestPermission(@"com.microsoft.Outlook");
 }
 
 
