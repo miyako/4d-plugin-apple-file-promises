@@ -19,7 +19,7 @@ Accept drag and drop of messages from Apple Mail and Microsoft Outlook
 
 The plugin is compatible with the new security rules of macOS Mojave, but it is your responsibility to add the "Privacy - AppleEvents Sending Usage Description" (``NSAppleEventsUsageDescription``)  key to the main app's ``Info.plist``.
 
-See (4d-plugin-notes)[https://github.com/miyako/4d-plugin-notes] for more information.
+See [4d-plugin-notes](https://github.com/miyako/4d-plugin-notes) for more information.
 
 ## Syntax
 
