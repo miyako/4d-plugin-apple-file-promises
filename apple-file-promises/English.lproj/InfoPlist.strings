@@ -1,5 +1,5 @@
 /* Localized versions of Info.plist keys */
 
 CFBundleName = "Apple file promises";
-CFBundleShortVersionString = "3.0";
-CFBundleGetInfoString = "Apple file promises version 3.0, Copyright 2019 miyako.";
+CFBundleShortVersionString = "3.1";
+CFBundleGetInfoString = "Apple file promises version 3.1, Copyright 2019 miyako.";
