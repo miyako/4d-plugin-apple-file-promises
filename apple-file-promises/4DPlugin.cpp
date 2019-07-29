@@ -442,7 +442,7 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 			{
 				if([plist count])
 				{
-					/* I guess the idea is to run automator/applescript based on this information, when multiple messages are dropped/
+					/* I guess the idea is to run automator/applescript based on this information, when multiple messages are dropped
 					 * evidently mail.app uses file promise for a single message but automator for multiple messages (1 of which is transferred via promise in El Capitan)
 					 * plist is an array of dictionaries [{account:string, id:integer, mailbox:string, subject:string}]
 					 * we will skip the standard kPasteboardTypeFileURLPromise in this case
@@ -485,7 +485,7 @@ BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 		 */
 		NSArray *filenames = [sender namesOfPromisedFilesDroppedAtDestination:url];
 				
-		/* prepare listener for fiel copy */
+		/* prepare listener for file copy */
 		[FilePromise::listener setURL:url];
 	}
 	
@@ -504,7 +504,13 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 	if(1)
 	{
 		/* resolves as "?0=6:4=ERMessagePasteboardType" */
-		if ([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"])
+		if (([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"])
+            /* resolves as"?0=6:4=kOlxMessagePasteboardType" */
+          ||([types containsObject:(NSString *)@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"])
+            /* resolves as"?0=6:4=WMOutlookInternalFilePromisePboardType" */
+          ||([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"])
+          ||([types containsObject:(NSString *)@"WMOutlookInternalFilePromisePboardType"])
+            )
 		{
 			NSURL *url = temporaryDirectory();
 						
@@ -791,7 +797,22 @@ void OnStartup()
 {
     requestPermission(@"com.apple.mail");
     requestPermission(@"com.apple.Photos");
-    requestPermission(@"com.microsoft.Outlook");
+    requestPermission(@"com.microsoft.Outlook");/* not applicable for 3rd party apps? */
+    
+    
+//NSLog(@"%@", copyDecodedDynUTI(@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"));/* ?0=6:4=kOlxMessagePasteboardType */
+NSLog(@"%@", copyDecodedDynUTI(@"dyn.ah62d4rv4gu8yc6durvwwa3xmrvw1gkdusm1044pxqyuha2pxsvw0e55bsmwca7d3sbwu"));/* ?0=6:4=Apple files promise pasteboard type */
+//NSLog(@"%@", copyDecodedDynUTI(@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"));/* ?0=6:4=WMOutlookInternalFilePromisePboardType */
+NSLog(@"%@", copyDecodedDynUTI(@"dyn.ah62d4rv4gu8y6y4usm1044pxqzb085xyqz1hk64uqm10c6xenv61a3k"));/* ?0=6:4=NSPromiseContentsPboardType */
+//NSLog(@"%@", @"WMOutlookInternalFilePromisePboardType");
+
+
+
+    
+
+          
+    
+    
 }
 
 
