@@ -47,7 +47,7 @@ typedef PA_long32 method_id_t;
 typedef PA_Unichar* process_name_t;
 
 #if VERSIONMAC
-@interface Listener : NSObject
+@interface AppleFilePromiseListener : NSObject
 {
 	FSEventStreamRef stream;
 }

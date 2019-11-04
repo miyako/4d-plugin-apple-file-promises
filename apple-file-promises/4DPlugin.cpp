@@ -73,7 +73,7 @@ std::mutex globalMutex4;/* PROCESS_SHOULD_RESUME */
 
 namespace FilePromise
 {
-	Listener *listener = nil;
+	AppleFilePromiseListener *listener = nil;
 	
     //constants
 	process_stack_size_t STACK_SIZE = 0;
@@ -855,7 +855,7 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 
 // ------------------------------ Apple file promises -----------------------------
 
-@implementation Listener
+@implementation AppleFilePromiseListener
 
 - (id)init
 {
@@ -923,7 +923,7 @@ void listener_start()
 {
     if(!FilePromise::listener)
     {
-        FilePromise::listener = [[Listener alloc]init];
+        FilePromise::listener = [[AppleFilePromiseListener alloc]init];
     }
 }
 
