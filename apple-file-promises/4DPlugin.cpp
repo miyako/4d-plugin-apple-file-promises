@@ -257,7 +257,7 @@ void sb_tell_mail_to_export(NSURL *url)
 				i++;
 				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
         
-                NSLog(@"%@", source);
+//                NSLog(@"%@", source);
                 
                 [(NSString *)source writeToFile:dst
                                      atomically:NO /* avoid catching the atomic write files */
@@ -289,16 +289,16 @@ void sb_tell_outlook_to_export(NSURL *url)
 				
 				for (id source in sources) {
                     
-                    NSStringEncoding encoding = NSWindowsCP1252StringEncoding;
+                    NSStringEncoding encoding = NSISOLatin1StringEncoding;
                     
-					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\n"];
+//					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\n"];
                     
                     i++;
 					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
                     
                     [(NSString *)source writeToFile:dst
                                          atomically:NO /* avoid catching the atomic write files */
-                                           encoding:NSISOLatin1StringEncoding
+                                           encoding:encoding
                                               error:nil];
 				}
 			}
