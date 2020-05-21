@@ -268,6 +268,8 @@ void sb_tell_mail_to_export(NSURL *url)
 	}
 }
 
+//BUG: quoted printable files are corrupt!
+
 void sb_tell_outlook_to_export(NSURL *url)
 {
 	@autoreleasepool
@@ -291,7 +293,7 @@ void sb_tell_outlook_to_export(NSURL *url)
                     
                     NSStringEncoding encoding = NSISOLatin1StringEncoding;
                     
-//					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\n"];
+					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\r\n"];
                     
                     i++;
 					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
@@ -306,192 +308,268 @@ void sb_tell_outlook_to_export(NSURL *url)
 	}	
 }
 
+void requestPromisedFiles(NSPasteboard *pboard) {
+
+    NSURL *url = temporaryDirectory();
+                
+    /* prepare listener for file copy */
+    [FilePromise::listener setURL:url];
+    
+    NSArray *filePromises = [pboard readObjectsForClasses:@[[NSFilePromiseReceiver class]] options:@{}];
+    
+    if(filePromises) {
+                    
+        for (NSFilePromiseReceiver *fileReceiver in filePromises) {
+                        
+            [fileReceiver receivePromisedFilesAtDestination:/*destinationDir*/url options:@{}
+                                             operationQueue:[NSOperationQueue /*new*/ mainQueue]
+                                                     reader:^(NSURL * fileURL, NSError * errorOrNil) {
+                if (errorOrNil) {
+                    
+                    NSLog(@"Error: %@", errorOrNil);
+                    NSLog(@"URL: %@", url);
+                    return;
+                }
+                
+                NSLog(@"fileURL: %@", fileURL);
+                
+            }];
+            
+        }
+        
+    }
+    
+}
+
+void registeredDraggedTypes(NSWindow *window) {
+    
+    if(window)
+    {
+        NSView *contentView = [window contentView];
+        if(contentView)
+        {
+            const char *name = class_getName([contentView class]);//NSView
+            NSArray *subviews = [contentView subviews];
+            if([subviews count])
+            {
+                NSView *mainView = [subviews objectAtIndex:0];
+
+                [mainView registerForDraggedTypes:[NSFilePromiseReceiver readableDraggedTypes]];
+                [mainView registerForDraggedTypes:@[NSFilesPromisePboardType]];/* this is critical! */
+
+                NSArray *registeredDraggedTypes = [mainView registeredDraggedTypes];
+                NSLog(@"registered types:%@", registeredDraggedTypes);
+            }
+        }
+    }
+}
+
 NSDragOperation __swiz_draggingEntered(id self, SEL _cmd, id sender)
 {
-	NSDragOperation returnValue = ((NSDragOperation(*)(id,SEL, id))__orig_imp_draggingEntered)(self, _cmd, sender);
-	
-	if(returnValue & NSDragOperationNone)
-	{
-		/* can we change the drag icon here? */
-	}
-	
-	NSPasteboard *pboard = [sender draggingPasteboard];
-	
-	if(true)
-	{
-		[sender enumerateDraggingItemsWithOptions:
-		 NSDraggingItemEnumerationConcurrent forView:self
-																			classes:[NSArray arrayWithObject:[NSPasteboardItem class]]
-																searchOptions:nil
-																	 usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
-		 {
-			 /* for each item (file, folder...) being dragged over */
-			 NSArray *types = [[draggingItem item]types];
-			
-			 /* to check content types (image or not, etc.) */
-			 if(false)
-			 {
-				 if([types containsObject:(NSString *)kPasteboardTypeFilePromiseContent])
-				 {
-//                     NSLog(@"content types:%@", [pboard stringForType:(NSString *)kPasteboardTypeFilePromiseContent]);
-				 }
-			 }
-
-			 /* evidently no need to register */
-			 if([types containsObject:(NSString *)kPasteboardTypeFileURLPromise])
-			 {
-				 if(false)
-				 {
-					 NSWindow *window = [sender draggingDestinationWindow];
-					 if(window)
-					 {
-						 NSView *contentView = [window contentView];
-						 if(contentView)
-						 {
-							 const char *name = class_getName([contentView class]);//NSView
-							 NSArray *subviews = [contentView subviews];
-							 if([subviews count])
-							 {
-								 NSView *mainView = [subviews objectAtIndex:0];
-								 [mainView registerForDraggedTypes:@[
-																										 NSFilenamesPboardType,
-																										 (NSString *)kPasteboardTypeFileURLPromise,
-                                                                                                         @"com.apple.pasteboard.promised-file-name", @"com.apple.pasteboard.NSFilePromiseID"]];
-								 NSArray *registeredDraggedTypes = [mainView registeredDraggedTypes];
-//                                 NSLog(@"registered types:%@", registeredDraggedTypes);//com.apple.pasteboard.promised-file-url
-							 }
-						 }
-					 }
-				 }
-			 }
-	
-		 }];
-	}
-	
-	return returnValue;
+    __block NSDragOperation returnValue = ((NSDragOperation(*)(id,SEL, id))__orig_imp_draggingEntered)(self, _cmd, sender);
+    
+    NSLog(@"draggingEntered, NSDragOperation=%d", returnValue);
+    
+    if(false)
+    {
+        registeredDraggedTypes([sender draggingDestinationWindow]);
+    }
+    
+    if(returnValue & NSDragOperationNone)
+    {
+        /* can we change the drag icon here? */
+    }
+    
+    if(true)
+    {
+        NSPasteboard *pboard = [sender draggingPasteboard];
+        
+        [sender enumerateDraggingItemsWithOptions:
+         NSDraggingItemEnumerationConcurrent forView:self
+                                          classes:[NSArray arrayWithObject:[NSPasteboardItem class]]
+                                    searchOptions:nil
+                                       usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
+         {
+            
+            NSArray *types = [[draggingItem item]types];
+            
+            if(false)
+            {
+                if([types containsObject:(NSString *)kPasteboardTypeFilePromiseContent])
+                {
+                    NSLog(@"content types:%@", [pboard stringForType:(NSString *)kPasteboardTypeFilePromiseContent]);
+                }
+            }
+            
+            if([types containsObject:(NSString *)kPasteboardTypeFileURLPromise])
+            {
+//                requestPromisedFiles(pboard);
+            }
+            
+        }];
+    }
+    
+    return returnValue;
 }
 
 NSDragOperation __swiz_draggingUpdated(id self, SEL _cmd, id sender)
 {
-	NSDragOperation returnValue = ((NSDragOperation(*)(id,SEL, id))__orig_imp_draggingUpdated)(self, _cmd, sender);
-	
-	if(returnValue & NSDragOperationNone)
-	{
-		/* can we change the drag icon here? */
-	}
-	
-	if(false)
-	{
-		[sender enumerateDraggingItemsWithOptions:
-		 NSDraggingItemEnumerationConcurrent forView:self
-																			classes:[NSArray arrayWithObject:[NSPasteboardItem class]]
-																searchOptions:nil
-																	 usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
-		 {
-			 /* for each item (file, folder...) being dragged over */
-			 NSArray *types = [[draggingItem item]types];
-		 }];
-	}
-	
-	return returnValue;
+    __block NSDragOperation returnValue = ((NSDragOperation(*)(id,SEL, id))__orig_imp_draggingUpdated)(self, _cmd, sender);
+    
+    NSLog(@"draggingUpdated, NSDragOperation=%d", returnValue);
+    
+    if(returnValue & NSDragOperationNone)
+    {
+        /* can we change the drag icon here? */
+    }
+    
+    if(true)
+    {
+        NSPasteboard *pboard = [sender draggingPasteboard];
+        
+        [sender enumerateDraggingItemsWithOptions:
+         NSDraggingItemEnumerationConcurrent forView:self
+                                          classes:[NSArray arrayWithObject:[NSPasteboardItem class]]
+                                    searchOptions:nil
+                                       usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
+         {
+            
+            NSArray *types = [[draggingItem item]types];
+            
+            if(false)
+            {
+                if([types containsObject:(NSString *)kPasteboardTypeFilePromiseContent])
+                {
+                    NSLog(@"content types:%@", [pboard stringForType:(NSString *)kPasteboardTypeFilePromiseContent]);
+                }
+            }
+            
+            if([types containsObject:(NSString *)kPasteboardTypeFileURLPromise])
+            {
+//                requestPromisedFiles(pboard);
+            }
+            
+        }];
+    }
+    
+    return returnValue;
 }
 
 BOOL __swiz_prepareForDragOperation(id self, SEL _cmd, id sender)
 {
-	BOOL returnValue = ((BOOL(*)(id,SEL, id))__orig_imp_prepareForDragOperation)(self, _cmd, sender);
-	
-	if(false)
-	{
-		[sender enumerateDraggingItemsWithOptions:
-		 NSDraggingItemEnumerationConcurrent forView:self
-																			classes:[NSArray arrayWithObject:[NSPasteboardItem class]]
-																searchOptions:nil
-																	 usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
-		 {
-			 /* for each item (file, folder...) being dragged over */
-//             NSLog(@"draggingEntered:draggingItemTypes:%@", [[draggingItem item]types]);
-		 }];
-	}
-	
-	return returnValue;
+    BOOL returnValue = ((BOOL(*)(id,SEL, id))__orig_imp_prepareForDragOperation)(self, _cmd, sender);
+    
+    if(true)
+    {
+        NSPasteboard *pboard = [sender draggingPasteboard];
+        
+        [sender enumerateDraggingItemsWithOptions:
+         NSDraggingItemEnumerationConcurrent forView:self
+                                          classes:[NSArray arrayWithObject:[NSPasteboardItem class]]
+                                    searchOptions:nil
+                                       usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop)
+         {
+            
+            NSArray *types = [[draggingItem item]types];
+            
+            if(false)
+            {
+                if([types containsObject:(NSString *)kPasteboardTypeFilePromiseContent])
+                {
+                    NSLog(@"content types:%@", [pboard stringForType:(NSString *)kPasteboardTypeFilePromiseContent]);
+                }
+            }
+            
+            if([types containsObject:(NSString *)kPasteboardTypeFileURLPromise])
+            {
+                requestPromisedFiles(pboard);
+            }
+            
+        }];
+    }
+    
+    return returnValue;
 }
+
+#define PROCESS_OUTLOOK_BY_SCRIPTING 0
+#define kpbERMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"
+#define kpbOlxMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"
+#define kpbWMOutlookInternalFilePromisePboardType (NSString *)@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"
 
 BOOL __swiz_performDragOperation(id self, SEL _cmd, id sender)
 {
-	BOOL returnValue = ((BOOL(*)(id,SEL, id))__orig_imp_performDragOperation)(self, _cmd, sender);
-	
-	NSPasteboard *pboard = [sender draggingPasteboard];
-	NSArray *types = [pboard types];
-	
-	if(true)
-	{
-		/* resolves as "?0=6:4=ERMessagePasteboardType" */
-		if ([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"])
-		{
-			goto exit;
-		}
-	}
-	
-	if(true)
-	{
-		if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeAutomator"])
-		{
-			NSArray *plist = [pboard propertyListForType:@"com.apple.mail.PasteboardTypeAutomator"];
-			
-			if(plist)
-			{
-				if([plist count])
-				{
-					/* I guess the idea is to run automator/applescript based on this information, when multiple messages are dropped
-					 * evidently mail.app uses file promise for a single message but automator for multiple messages (1 of which is transferred via promise in El Capitan)
-					 * plist is an array of dictionaries [{account:string, id:integer, mailbox:string, subject:string}]
-					 * we will skip the standard kPasteboardTypeFileURLPromise in this case
-					 */
-					goto exit;
-				}
-			}
-		}
-	}
-
-	if(false)
-	{
-		if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeMessageTransfer"])
-		{
-			/* contains the path to .mbox of the mailbox */
-//            NSLog(@"photoUUID:%@", [pboard stringForType:@"com.apple.mail.PasteboardTypeMessageTransfer"]);
-		}
-	}
-	
+    BOOL returnValue = ((BOOL(*)(id,SEL, id))__orig_imp_performDragOperation)(self, _cmd, sender);
+    
+    NSPasteboard *pboard = [sender draggingPasteboard];
+    NSArray *types = [pboard types];
+    
+    if(PROCESS_OUTLOOK_BY_SCRIPTING)
+    {
+        if (([types containsObject:kpbERMessagePasteboardType])
+          ||([types containsObject:kpbOlxMessagePasteboardType])
+          ||([types containsObject:kpbWMOutlookInternalFilePromisePboardType])
+          ||([types containsObject:(NSString *)@"WMOutlookInternalFilePromisePboardType"])
+            ) {
+            goto exit;
+        }
+            
+    }
+    
+    /* Apple Mail */
+    
+    if(true)
+    {
+        if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeAutomator"])
+        {
+            NSArray *plist = [pboard propertyListForType:@"com.apple.mail.PasteboardTypeAutomator"];
+            
+            if(plist)
+            {
+                if([plist count])
+                {
+                    /* I guess the idea is to run automator/applescript based on this information, when multiple messages are dropped
+                     * evidently mail.app uses file promise for a single message but automator for multiple messages (1 of which is transferred via promise in El Capitan)
+                     * plist is an array of dictionaries [{account:string, id:integer, mailbox:string, subject:string}]
+                     * we will skip the standard kPasteboardTypeFileURLPromise in this case
+                     */
+                    goto exit;
+                }
+            }
+        }
+    }
+    
+    if(false)
+    {
+        if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeMessageTransfer"])
+        {
+            /* contains the path to .mbox of the mailbox */
+            NSLog(@"photoUUID:%@", [pboard stringForType:@"com.apple.mail.PasteboardTypeMessageTransfer"]);
+        }
+    }
+    
     if(false)
     {
         if ([types containsObject:(NSString *)@"com.apple.pasteboard.promised-file-name"])
         {
-//            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.promised-file-name"]);
+            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.promised-file-name"]);
         }
         
         if ([types containsObject:(NSString *)@"com.apple.pasteboard.NSFilePromiseID"])
         {
-//            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.NSFilePromiseID"]);
+            NSLog(@"%@", [pboard stringForType:@"com.apple.pasteboard.NSFilePromiseID"]);
         }
     }
-
-	if (([types containsObject:(NSString *)kPasteboardTypeFileURLPromise]) || ([types containsObject:@"NSPromiseContentsPboardType"]))
-	{
-		NSURL *url = temporaryDirectory();
-		
-		/*
-		 * Drag destinations should invoke this method within their performDragOperation: method.
-		 * https://developer.apple.com/documentation/appkit/nsdragginginfo/1415980-namesofpromisedfilesdroppedatdes
-		 */
-		NSArray *filenames = [sender namesOfPromisedFilesDroppedAtDestination:url];
-				
-		/* prepare listener for file copy */
-		[FilePromise::listener setURL:url];
-	}
-	
-	exit:
-	
-	return returnValue;
+    
+    /* Outlook */
+    
+    if (([types containsObject:(NSString *)kPasteboardTypeFileURLPromise]) || ([types containsObject:@"NSPromiseContentsPboardType"]))
+    {
+        
+    }
+    
+exit:
+    
+    return returnValue;
 }
 
 void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
@@ -500,30 +578,27 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 	
 	NSPasteboard *pboard = [sender draggingPasteboard];
 	NSArray *types = [pboard types];
-
-	if(1)
+    
+	if(PROCESS_OUTLOOK_BY_SCRIPTING)
 	{
-		/* resolves as "?0=6:4=ERMessagePasteboardType" */
-		if (([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"])
-            /* resolves as"?0=6:4=kOlxMessagePasteboardType" */
-          ||([types containsObject:(NSString *)@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"])
-            /* resolves as"?0=6:4=WMOutlookInternalFilePromisePboardType" */
-          ||([types containsObject:(NSString *)@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"])
+        if (([types containsObject:kpbERMessagePasteboardType])
+          ||([types containsObject:kpbOlxMessagePasteboardType])
+          ||([types containsObject:kpbWMOutlookInternalFilePromisePboardType])
           ||([types containsObject:(NSString *)@"WMOutlookInternalFilePromisePboardType"])
-            )
-		{
-			NSURL *url = temporaryDirectory();
-						
-			/* prepare listener for file copy */
-			[FilePromise::listener setURL:url];
-			
-			[swizzle_XMacNSView_saisierec performSelectorInBackground:@selector(askOutlookToExport:) withObject:url];
+            ) {
+            NSURL *url = temporaryDirectory();
+                        
+            /* prepare listener for file copy */
+            [FilePromise::listener setURL:url];
+            
+            [swizzle_XMacNSView_saisierec performSelectorInBackground:@selector(askOutlookToExport:) withObject:url];
 
-			goto exit;
-		}
+            goto exit;;
+        }
+        
 	}
 	
-	if(1)
+	if(true)
 	{
 		if ([types containsObject:(NSString *)@"com.apple.mail.PasteboardTypeAutomator"])
 		{
@@ -555,10 +630,8 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
 	
 	if (([types containsObject:(NSString *)kPasteboardTypeFileURLPromise]) || ([types containsObject:@"NSPromiseContentsPboardType"]))
 	{
-		/* the promised files may not be available at this point 
-		 * does not seem to be working after El Capitain (maybe due to namesOfPromisedFilesDroppedAtDestination deprecation)
-		 */
-		
+
+        
 		goto exit;
 	}
 
@@ -797,6 +870,7 @@ void OnStartup()
 {
     requestPermission(@"com.apple.mail");
     requestPermission(@"com.apple.Photos");
+    
     requestPermission(@"com.microsoft.Outlook");/* not applicable for 3rd party apps? */
     
 //NSLog(@"%@", copyDecodedDynUTI(@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"));/* ?0=6:4=kOlxMessagePasteboardType */
@@ -807,21 +881,10 @@ void OnStartup()
 
 }
 
-
 void OnExit()
 {
     swizzle_off();
 }
-
-/*
-void OnCloseProcess()
-{
-	if(IsProcessOnExit())
-	{
-		swizzle_off();
-	}
-}
- */
 
 #pragma mark -
 
@@ -838,12 +901,6 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
             OnExit();
             break;
             
-            /*
-		case kCloseProcess :
-			OnCloseProcess();
-			break;
-             */
-			
 			// --- Apple file promises
 			
 		case 1 :
@@ -1045,7 +1102,6 @@ void listenerLoop()
     
 	PA_KillProcess();
 }
-
 
 void listenerLoopStart()
 {
