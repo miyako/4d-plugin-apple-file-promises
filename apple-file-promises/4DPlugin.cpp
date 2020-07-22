@@ -210,59 +210,41 @@ void sb_tell_mail_to_export(NSURL *url)
 			NSArray *mails = [application selection];
 			NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
             
-            /*
-             NSString *pattern1 = @"^content-transfer-encoding\\s*:.*8bit.*$";
-             NSString *pattern2 = @"^content-type\\s*:.*charset\\s*=\\s*utf-?8.*$";
-             NSRegularExpression *regex1 = [NSRegularExpression
-             regularExpressionWithPattern:pattern1
-             options:NSRegularExpressionCaseInsensitive
-             |NSRegularExpressionAnchorsMatchLines
-             error:nil];
-             NSRegularExpression *regex2 = [NSRegularExpression
-             regularExpressionWithPattern:pattern2
-             options:NSRegularExpressionCaseInsensitive
-             |NSRegularExpressionAnchorsMatchLines
-             error:nil];
-             */
-
 			NSUInteger i = 0;
 			
 			NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
 			
 			for (id source in sources) {
-                
-                /*
-                 
-                 always use NSISOLatin1StringEncoding
-                 
-                 NSRange range = [regex1 rangeOfFirstMatchInString:source
-                 options:0
-                 range:NSMakeRange(0, [source length])];
-                 
-                 if(range.location != NSNotFound)
-                 {
-                 range = [regex2 rangeOfFirstMatchInString:source
-                 options:0
-                 range:NSMakeRange(0, [source length])];
-                 if(range.location != NSNotFound)
-                 {
-                 encoding = NSISOLatin1StringEncoding;
-                 }
-                 }
-                 
-                 */
-                
+                                
                 NSStringEncoding encoding = NSISOLatin1StringEncoding;
-                
-				i++;
-				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
+				NSString *dst = [path stringByAppendingFormat:@"/%d.%@", ++i, @"eml"];
         
-//                NSLog(@"%@", source);
-                
-                [(NSString *)source writeToFile:dst
-                                     atomically:NO /* avoid catching the atomic write files */
-                                       encoding:encoding
-                                          error:nil];
+                if([(NSString *)source writeToFile:dst
+                                        atomically:YES
+                                          encoding:encoding
+                                             error:nil]){
+                    NSURL *url = [[NSURL alloc]initFileURLWithPath:dst isDirectory:NO];
+                    if(url)
+                    {
+                        NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLHFSPathStyle);
+                        C_TEXT t;
+                        t.setUTF16String(path);
+                        CUTF16String u16;
+                        t.copyUTF16String(&u16);
+                        
+                        if(1)
+                        {
+                            std::lock_guard<std::mutex> lock(globalMutex);
+                            
+                            FilePromise::PATHS.push_back(u16);
+                        }
+                        
+                        [path release];
+                        
+                        listenerLoopExecute();
+                        [url release];
+                    }
+                }
 			}
 		}
 	}
@@ -295,13 +277,34 @@ void sb_tell_outlook_to_export(NSURL *url)
                     
 					source = [source stringByReplacingOccurrencesOfString:@"\r" withString:@"\r\n"];
                     
-                    i++;
-					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
+					NSString *dst = [path stringByAppendingFormat:@"/%d.%@", ++i, @"eml"];
                     
-                    [(NSString *)source writeToFile:dst
-                                         atomically:NO /* avoid catching the atomic write files */
-                                           encoding:encoding
-                                              error:nil];
+                    if([(NSString *)source writeToFile:dst
+                                            atomically:YES
+                                              encoding:encoding
+                                                 error:nil]){
+                        NSURL *url = [[NSURL alloc]initFileURLWithPath:dst isDirectory:NO];
+                        if(url)
+                        {
+                            NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLHFSPathStyle);
+                            C_TEXT t;
+                            t.setUTF16String(path);
+                            CUTF16String u16;
+                            t.copyUTF16String(&u16);
+                            
+                            if(1)
+                            {
+                                std::lock_guard<std::mutex> lock(globalMutex);
+                                
+                                FilePromise::PATHS.push_back(u16);
+                            }
+                            
+                            [path release];
+                            
+                            listenerLoopExecute();
+                            [url release];
+                        }
+                    }
 				}
 			}
 		}
@@ -491,7 +494,6 @@ BOOL __swiz_prepareForDragOperation(id self, SEL _cmd, id sender)
     return returnValue;
 }
 
-#define PROCESS_OUTLOOK_BY_SCRIPTING 0
 #define kpbERMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"
 #define kpbOlxMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"
 #define kpbWMOutlookInternalFilePromisePboardType (NSString *)@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"
@@ -658,6 +660,7 @@ void __swiz_concludeDragOperation(id self, SEL _cmd, id sender)
                 }
 
 				[path release];
+                [url release];
 			}
 			
 		}];
@@ -708,6 +711,7 @@ void gotEvent(FSEventStreamRef stream,
 					}
 					
 					[path release];
+                    [url release];
 					
 					listenerLoopExecute();
 				}
@@ -927,49 +931,54 @@ void CommandDispatcher (PA_long32 pProcNum, sLONG_PTR *pResult, PackagePtr pPara
 
 - (void)dealloc
 {
-	if(stream)
-	{
-		FSEventStreamStop(stream);
-		FSEventStreamUnscheduleFromRunLoop (stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-		FSEventStreamInvalidate(stream);
-		FSEventStreamRelease(stream);
-		stream = 0;
-	}
-	
+    if(USE_FS_EVENT) {
+        if(stream)
+        {
+            FSEventStreamStop(stream);
+            FSEventStreamUnscheduleFromRunLoop (stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+            FSEventStreamInvalidate(stream);
+            FSEventStreamRelease(stream);
+            stream = 0;
+        }
+    }
+
 	[super dealloc];
 }
 
 - (void)setURL:(NSURL *)url
 {
-	if(stream)
-	{
-		FSEventStreamStop(stream);
-		FSEventStreamUnscheduleFromRunLoop (stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-		FSEventStreamInvalidate(stream);
-		FSEventStreamRelease(stream);
-		stream = 0;
-	}
-	
-	NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
-	
-	FSEventStreamContext context = {0, NULL, NULL, NULL, NULL};
-	NSTimeInterval latency = 1.0;
-	
-	stream = FSEventStreamCreate(NULL,
-															 (FSEventStreamCallback)gotEvent,
-															 &context,
-															 (CFArrayRef)@[path],
-															 kFSEventStreamEventIdSinceNow,
-															 (CFAbsoluteTime)latency,
-															 kFSEventStreamCreateFlagUseCFTypes
-															 | kFSEventStreamCreateFlagFileEvents
-															 | kFSEventStreamCreateFlagNoDefer
-//															 | kFSEventStreamCreateFlagIgnoreSelf
-															 );
-	
-	FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-	FSEventStreamStart(stream);
-	[path release];
+    if(USE_FS_EVENT) {
+        if(stream)
+        {
+            FSEventStreamStop(stream);
+            FSEventStreamUnscheduleFromRunLoop (stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+            FSEventStreamInvalidate(stream);
+            FSEventStreamRelease(stream);
+            stream = 0;
+        }
+        
+        NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
+        
+        FSEventStreamContext context = {0, NULL, NULL, NULL, NULL};
+        NSTimeInterval latency = 1.0;
+        
+        stream = FSEventStreamCreate(NULL,
+                                     (FSEventStreamCallback)gotEvent,
+                                     &context,
+                                     (CFArrayRef)@[path],
+                                     kFSEventStreamEventIdSinceNow,
+                                     (CFAbsoluteTime)latency,
+                                     kFSEventStreamCreateFlagUseCFTypes
+                                     | kFSEventStreamCreateFlagFileEvents
+                                     | kFSEventStreamCreateFlagNoDefer
+                                     //                                                                     | kFSEventStreamCreateFlagIgnoreSelf
+                                     );
+        
+        FSEventStreamScheduleWithRunLoop(stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+        FSEventStreamStart(stream);
+        [path release];
+    }
+
 }
 
 @end

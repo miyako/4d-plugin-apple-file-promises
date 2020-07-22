@@ -19,8 +19,6 @@
 #define CALLBACK_SLEEP_TIME 59
 #include <mutex>
 
-//#include "preemptive_methods.h"
-
 /*
  
  not preemptive because of
@@ -46,7 +44,11 @@ typedef PA_long32 process_stack_size_t;
 typedef PA_long32 method_id_t;
 typedef PA_Unichar* process_name_t;
 
+#define PROCESS_OUTLOOK_BY_SCRIPTING 0
+#define USE_FS_EVENT 0
+
 #if VERSIONMAC
+
 @interface AppleFilePromiseListener : NSObject
 {
 	FSEventStreamRef stream;
