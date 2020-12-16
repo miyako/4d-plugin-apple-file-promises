@@ -44,8 +44,12 @@ typedef PA_long32 process_stack_size_t;
 typedef PA_long32 method_id_t;
 typedef PA_Unichar* process_name_t;
 
-#define PROCESS_OUTLOOK_BY_SCRIPTING 0
-#define USE_FS_EVENT 0
+#define USE_PROMISE_FOR_OUTLOOK 1
+#define USE_PROMISE_FOR_PHOTO 0
+
+#define kpbERMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"
+#define kpbOlxMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"
+#define kpbWMOutlookInternalFilePromisePboardType (NSString *)@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"
 
 #if VERSIONMAC
 
