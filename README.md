@@ -1,11 +1,9 @@
+![platform](https://img.shields.io/static/v1?label=platform&message=osx-64&color=blue)
+[![license](https://img.shields.io/github/license/miyako/4d-plugin-apple-file-promises)](LICENSE)
+![downloads](https://img.shields.io/github/downloads/miyako/4d-plugin-apple-file-promises/total)
+
 # 4d-plugin-apple-file-promises
 Accept drag and drop of messages from Apple Mail and Microsoft Outlook
-
-### Platform
-
-| carbon | cocoa | win32 | win64 |
-|:------:|:-----:|:---------:|:---------:|
-||<img src="https://cloud.githubusercontent.com/assets/1725068/22371562/1b091f0a-e4db-11e6-8458-8653954a7cce.png" width="24" height="24" />|||
 
 **A similar solution for Windows is available**: [message-file-drop](https://github.com/miyako/4d-plugin-message-file-drop)
 
