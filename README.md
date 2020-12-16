@@ -1,6 +1,6 @@
 ![platform](https://img.shields.io/static/v1?label=platform&message=osx-64&color=blue)
 [![license](https://img.shields.io/github/license/miyako/4d-plugin-apple-file-promises)](LICENSE)
-[![version](https://img.shields.io/badge/version-16%2B-rebeccapurple)
+[![version](https://img.shields.io/badge/version-16%2B-rebeccapurple)]
 ![downloads](https://img.shields.io/github/downloads/miyako/4d-plugin-apple-file-promises/total)
 
 # 4d-plugin-apple-file-promises
