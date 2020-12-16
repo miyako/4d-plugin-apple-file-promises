@@ -1,19 +1,12 @@
 ![platform](https://img.shields.io/static/v1?label=platform&message=osx-64&color=blue)
 [![license](https://img.shields.io/github/license/miyako/4d-plugin-apple-file-promises)](LICENSE)
+[![version](https://img.shields.io/badge/version-16%2B-rebeccapurple)
 ![downloads](https://img.shields.io/github/downloads/miyako/4d-plugin-apple-file-promises/total)
 
 # 4d-plugin-apple-file-promises
 Accept drag and drop of messages from Apple Mail and Microsoft Outlook
 
 **A similar solution for Windows is available**: [message-file-drop](https://github.com/miyako/4d-plugin-message-file-drop)
-
-### Version
-
-<img src="https://cloud.githubusercontent.com/assets/1725068/18940648/2192ddba-8645-11e6-864d-6d5692d55717.png" width="32" height="32" /> <img src="https://user-images.githubusercontent.com/1725068/41266195-ddf767b2-6e30-11e8-9d6b-2adf6a9f57a5.png" width="32" height="32" />
-
-### Releases 
-
-[3.1](https://github.com/miyako/4d-plugin-apple-file-promises/releases/tag/3.1) added [``AEDeterminePermissionToAutomateTarget``](https://developer.apple.com/documentation/coreservices/3025784-aedeterminepermissiontoautomatet?language=objc) for Mojave
 
 The plugin is compatible with the new security rules of macOS Mojave, but it is your responsibility to add the "Privacy - AppleEvents Sending Usage Description" (``NSAppleEventsUsageDescription``)  key to the main app's ``Info.plist``.
 
