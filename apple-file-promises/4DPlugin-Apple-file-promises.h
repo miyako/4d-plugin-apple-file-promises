@@ -63,13 +63,13 @@ typedef PA_Unichar* process_name_t;
 #define kpbERMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df"
 #define kpbOlxMessagePasteboardType (NSString *)@"dyn.ah62d4rv4gu800x5qtbg0n65xqfx0nydbsr4gn2xtqf3gkzd3sbwu"
 #define kpbWMOutlookInternalFilePromisePboardType (NSString *)@"dyn.ah62d4rv4gu8zsxntsz4g255trre067dfsm1gc5cgrf0gnydwr700w65fnbvg82pwqvnhw6df"
-
+/*
 #ifndef errAEEventWouldRequireUserConsent
 enum {
     errAEEventWouldRequireUserConsent     =     -1744
 };
 #endif
-
+*/
 #if VERSIONMAC
 
 @interface AppleFilePromiseListener : NSObject
