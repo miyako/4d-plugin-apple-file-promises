@@ -1,2 +1,5 @@
 apple-file-promises/build/*
 apple-file-promises/test/userPreferences.*
+test/userPreferences.*
+test/Project/DerivedData/*
+build/*
