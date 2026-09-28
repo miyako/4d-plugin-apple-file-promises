@@ -1254,25 +1254,27 @@ void listenerLoopExecuteMethod() {
     }
     
     /* snapshot the shared strings under their documented mutexes; every
-       subsequent use in this function reads only these local copies */
-    C_TEXT listenerMethod;
-    C_TEXT listenerContext;
+       subsequent use in this function reads only these local copies.
+       C_TEXT's copy-assignment is deleted, so copy via copyUTF16String
+       into CUTF16String (already used elsewhere in this file for PATHS) */
+    CUTF16String listenerMethod;
+    CUTF16String listenerContext;
 
     if(1)
     {
         std::lock_guard<std::mutex> lock(globalMutex2);
 
-        listenerMethod = FilePromise::LISTENER_METHOD;
+        FilePromise::LISTENER_METHOD.copyUTF16String(&listenerMethod);
     }
 
     if(1)
     {
         std::lock_guard<std::mutex> lock(globalMutex);
 
-        listenerContext = FilePromise::LISTENER_CONTEXT;
+        FilePromise::LISTENER_CONTEXT.copyUTF16String(&listenerContext);
     }
 
-    method_id_t methodId = PA_GetMethodID((PA_Unichar *)listenerMethod.getUTF16StringPtr());
+    method_id_t methodId = PA_GetMethodID((PA_Unichar *)listenerMethod.c_str());
     
     if(methodId)
     {
@@ -1281,7 +1283,7 @@ void listenerLoopExecuteMethod() {
         params[1] = PA_CreateVariable(eVK_Unistring);
         
         PA_Unistring command = PA_CreateUnistring((PA_Unichar *)__PATH.c_str());
-        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)listenerContext.getUTF16StringPtr());
+        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)listenerContext.c_str());
     
         PA_SetStringVariable(&params[0], &command);
         PA_SetStringVariable(&params[1], &context);
@@ -1298,13 +1300,13 @@ void listenerLoopExecuteMethod() {
         params[2] = PA_CreateVariable(eVK_Unistring);
         
         PA_Unistring command = PA_CreateUnistring((PA_Unichar *)__PATH.c_str());
-        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)listenerContext.getUTF16StringPtr());
+        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)listenerContext.c_str());
         
         PA_SetStringVariable(&params[1], &command);
         PA_SetStringVariable(&params[2], &context);
         
         params[0] = PA_CreateVariable(eVK_Unistring);
-        PA_Unistring method = PA_CreateUnistring((PA_Unichar *)listenerMethod.getUTF16StringPtr());
+        PA_Unistring method = PA_CreateUnistring((PA_Unichar *)listenerMethod.c_str());
         PA_SetStringVariable(&params[0], &method);
         
         /* execute method */
