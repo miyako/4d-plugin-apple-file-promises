@@ -195,6 +195,9 @@ void sb_tell_photos_to_export(id object) {
         if(application)
         {
             NSURL *url = temporaryDirectory();
+
+            if(!url) return;
+
             NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
             
             NSDictionary *plist = (NSDictionary *)object;
@@ -209,12 +212,12 @@ void sb_tell_photos_to_export(id object) {
                  usingOriginals:YES];
                 
                 NSString *dst = [path stringByAppendingPathComponent:mediaItem.filename];
-                NSURL *url = [[NSURL alloc]initFileURLWithPath:dst isDirectory:NO];
-                if(url)
+                NSURL *dstUrl = [[NSURL alloc]initFileURLWithPath:dst isDirectory:NO];
+                if(dstUrl)
                 {
-                    NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLHFSPathStyle);
+                    NSString *dstPath = (NSString *)CFURLCopyFileSystemPath((CFURLRef)dstUrl, kCFURLHFSPathStyle);
                     C_TEXT t;
-                    t.setUTF16String(path);
+                    t.setUTF16String(dstPath);
                     CUTF16String u16;
                     t.copyUTF16String(&u16);
                     
@@ -225,12 +228,14 @@ void sb_tell_photos_to_export(id object) {
                         FilePromise::PATHS.push_back(u16);
                     }
                     
-                    [path release];
+                    [dstPath release];
                     
                     listenerLoopExecute();
-                    [url release];
+                    [dstUrl release];
                 }
             }
+
+            [path release]; /* CFURLCopyFileSystemPath follows the Create Rule: was leaked before this fix */
         }
     }
 }
@@ -293,7 +298,8 @@ void sb_tell_mail_to_export(id object) {
         if(application)
         {
             NSURL *url = temporaryDirectory();
-//            NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
+
+            if(!url) return;
             
             NSDictionary *plist = (NSDictionary *)object;
                         
@@ -309,6 +315,11 @@ void sb_tell_mail_to_export(id object) {
                     
                     SBElementArray<mailMessage *>*messages = [mailbox messages];
                     mailMessage *message = [messages objectWithID:[plist valueForKey:@"id"]];
+
+                    if(!message) {
+                        NSLog(@"sb_tell_mail_to_export: message id %@ not found in mailbox %@", [plist valueForKey:@"id"], [plist valueForKey:@"mailbox"]);
+                        return;
+                    }
                                         
                     NSURL *fileUrl = [url URLByAppendingPathComponent:[NSString stringWithFormat:@"%d.%@", sanitizeFileName([plist valueForKey:@"subject"]), @"eml"]];
 
@@ -319,12 +330,16 @@ void sb_tell_mail_to_export(id object) {
                          */
                         
                         NSString *source = message.source;
-                        NSStringEncoding encoding = NSISOLatin1StringEncoding;
-                        if([(NSString *)source writeToURL:fileUrl
+                        NSStringEncoding encoding = NSUTF8StringEncoding;
+                        NSError *writeError = nil;
+                        BOOL wroteOk = [(NSString *)source writeToURL:fileUrl
                                                atomically:YES
                                                  encoding:encoding
-                                                    error:nil]){
-                            
+                                                    error:&writeError];
+
+                        if(!wroteOk) {
+                            NSLog(@"sb_tell_mail_to_export: failed to write %@: %@", fileUrl, writeError);
+                            return; /* don't report a path that was never written */
                         }
 
                         NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)fileUrl, kCFURLHFSPathStyle);
@@ -354,6 +369,12 @@ void sb_tell_mail_to_export(id object) {
 void requestPromisedFiles(NSPasteboard *pboard) {
 
     NSURL *url = temporaryDirectory();
+
+    if(!url)
+    {
+        NSLog(@"requestPromisedFiles: temporaryDirectory() returned nil, aborting");
+        return;
+    }
                 
     /* prepare listener for file copy */
     [FilePromise::listener setURL:url];
@@ -730,8 +751,8 @@ void gotEvent(FSEventStreamRef stream,
         if(flags & kFSEventStreamEventFlagItemIsFile)
         {
             if(((!(flags & kFSEventStreamEventFlagItemCreated))
-                 && (flags & kFSEventStreamEventFlagItemRenamed)
-                 || (flags & kFSEventStreamEventFlagItemModified)
+                 && ((flags & kFSEventStreamEventFlagItemRenamed)
+                     || (flags & kFSEventStreamEventFlagItemModified))
                  )||(flags == 0x0041C500))
             {
                 NSURL *url = (NSURL *)CFURLCreateWithFileSystemPath(kCFAllocatorDefault, (CFStringRef)[paths objectAtIndex:i], kCFURLPOSIXPathStyle, false);
@@ -786,7 +807,7 @@ IMP __swiz_imp_concludeDragOperation = (IMP)__swiz_concludeDragOperation;
         
         __orig_imp_draggingUpdated =
         method_setImplementation(
-                                                         class_getInstanceMethod(MainViewClass, @selector(draggindUpdated:)),
+                                                         class_getInstanceMethod(MainViewClass, @selector(draggingUpdated:)),
                                                          __swiz_imp_draggingUpdated); // Q24@0:8@16
         
         __orig_imp_prepareForDragOperation =
@@ -980,6 +1001,12 @@ void PluginMain(PA_long32 selector, PA_PluginParameters params) {
             FSEventStreamRelease(stream);
             stream = 0;
         }
+
+        if(!url)
+        {
+            NSLog(@"AppleFilePromiseListener setURL: nil url, not starting FSEventStream");
+            return;
+        }
         
         NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
         
@@ -1045,7 +1072,15 @@ void listenerLoop() {
         
         if(1)
         {
+            std::lock_guard<std::mutex> lock(globalMutex4);
+            
             PROCESS_SHOULD_RESUME = FilePromise::PROCESS_SHOULD_RESUME;
+        }
+        
+        if(1)
+        {
+            std::lock_guard<std::mutex> lock(globalMutex3);
+            
             PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
         }
         
@@ -1084,6 +1119,12 @@ void listenerLoop() {
                     std::lock_guard<std::mutex> lock(globalMutex);
                     
                     PATHS = FilePromise::PATHS.size();
+                }
+                
+                if(1)
+                {
+                    std::lock_guard<std::mutex> lock(globalMutex3);
+                    
                     PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
                 }
             }
@@ -1103,6 +1144,8 @@ void listenerLoop() {
         
         if(1)
         {
+            std::lock_guard<std::mutex> lock(globalMutex3);
+            
             PROCESS_SHOULD_TERMINATE = FilePromise::PROCESS_SHOULD_TERMINATE;
         }
         
@@ -1196,6 +1239,11 @@ void listenerLoopExecuteMethod() {
     {
         std::lock_guard<std::mutex> lock(globalMutex);
 
+        if(FilePromise::PATHS.empty())
+        {
+            return; /* nothing to process; avoid dereferencing an end() iterator */
+        }
+
         std::vector<CUTF16String>::iterator p;
         
         p = FilePromise::PATHS.begin();
@@ -1205,7 +1253,26 @@ void listenerLoopExecuteMethod() {
         FilePromise::PATHS.erase(p);
     }
     
-    method_id_t methodId = PA_GetMethodID((PA_Unichar *)FilePromise::LISTENER_METHOD.getUTF16StringPtr());
+    /* snapshot the shared strings under their documented mutexes; every
+       subsequent use in this function reads only these local copies */
+    C_TEXT listenerMethod;
+    C_TEXT listenerContext;
+
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex2);
+
+        listenerMethod = FilePromise::LISTENER_METHOD;
+    }
+
+    if(1)
+    {
+        std::lock_guard<std::mutex> lock(globalMutex);
+
+        listenerContext = FilePromise::LISTENER_CONTEXT;
+    }
+
+    method_id_t methodId = PA_GetMethodID((PA_Unichar *)listenerMethod.getUTF16StringPtr());
     
     if(methodId)
     {
@@ -1214,7 +1281,7 @@ void listenerLoopExecuteMethod() {
         params[1] = PA_CreateVariable(eVK_Unistring);
         
         PA_Unistring command = PA_CreateUnistring((PA_Unichar *)__PATH.c_str());
-        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_CONTEXT.getUTF16StringPtr());
+        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)listenerContext.getUTF16StringPtr());
     
         PA_SetStringVariable(&params[0], &command);
         PA_SetStringVariable(&params[1], &context);
@@ -1231,13 +1298,13 @@ void listenerLoopExecuteMethod() {
         params[2] = PA_CreateVariable(eVK_Unistring);
         
         PA_Unistring command = PA_CreateUnistring((PA_Unichar *)__PATH.c_str());
-        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_CONTEXT.getUTF16StringPtr());
+        PA_Unistring context = PA_CreateUnistring((PA_Unichar *)listenerContext.getUTF16StringPtr());
         
         PA_SetStringVariable(&params[1], &command);
         PA_SetStringVariable(&params[2], &context);
         
         params[0] = PA_CreateVariable(eVK_Unistring);
-        PA_Unistring method = PA_CreateUnistring((PA_Unichar *)FilePromise::LISTENER_METHOD.getUTF16StringPtr());
+        PA_Unistring method = PA_CreateUnistring((PA_Unichar *)listenerMethod.getUTF16StringPtr());
         PA_SetStringVariable(&params[0], &method);
         
         /* execute method */

@@ -6,162 +6,143 @@
 See [4d-utility-sign-app](https://github.com/miyako/4d-utility-sign-app) on how to enable the plugin in 4D.
 
 # 4d-plugin-apple-file-promises
-Accept drag and drop of messages from Apple Mail and Microsoft Outlook
 
-**A similar solution for Windows is available**: [message-file-drop](https://github.com/miyako/4d-plugin-message-file-drop)
+**Apple file promises** is a 4D plugin (macOS only, 64-bit Cocoa builds) that adds one command, `ACCEPT FILE PROMISES`, to your 4D application. Once enabled, users can drag a message directly out of **Apple Mail** or **Microsoft Outlook** — or a photo out of the **Photos** app, or any ordinary file from the Finder — and drop it onto a 4D form. The plugin does the work of turning that drag into a real file on disk (exporting the message as an `.eml` file, or the photo as an image file), and then calls a 4D method you write, passing it the full path of the file.
 
-The plugin is compatible with the new security rules of macOS Mojave, but it is your responsibility to add the "Privacy - AppleEvents Sending Usage Description" (``NSAppleEventsUsageDescription``)  key to the main app's ``Info.plist``.
+Requirements:
 
-See [4d-plugin-notes](https://github.com/miyako/4d-plugin-notes) for more information.
+- macOS, 64-bit Cocoa version of 4D (v18 or later)
+- Your app's `Info.plist` must include the **Privacy – AppleEvents Sending Usage Description** key (`NSAppleEventsUsageDescription`), because the plugin uses Apple Events / scripting to ask Mail, Outlook and Photos to export the dropped item
+- The command works with 4D's own drag-and-drop events (`On Drag Over`, `On Drop`) on form objects — you don't need to change your existing drop handling, the plugin adds to it
 
-## Syntax
+## Command syntax
 
 ```
-ACCEPT FILE PROMISES (accept;method{;context})
+ACCEPT FILE PROMISES (accept ; method {; context})
 ```
 
-Parameter|Type|Description
-------------|------------|----
-accept|LONGINT|``1`` or ``0``
-method|TEXT|callback method(``$1:text;$2:text``)
-context|TEXT|any string (``$2`` passed to ``method``)
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `accept` | Longint | `1` to turn drag-and-drop capture **on**, `0` to turn it **off** |
+| `method` | Text | The name of your project method to call back for every file dropped |
+| `context` | Text | *(optional)* Any string you want passed straight through to `method` unchanged |
 
-In ``method`` pass the callback project method name. It will be called with 2 parameters, where ``$1`` is the system full path of the file dropped to 4D, and ``$2`` is a copy of the ``context`` you passed earlier. You can use ``context`` to let the callback notify and update your UI worker/process, for example.
+This command returns nothing. It has no error-reporting mechanism of its own — if something goes wrong internally (e.g. Mail refuses automation permission), it fails silently and your callback method simply won't be called for that item.
 
-**Note**: You can disable the folder monitoring process by passing ``0`` to the command. 
+Calling it with `accept = 1` a second time (with the same or a different method name) replaces the previous callback and context. Calling it with `accept = 0` stops the background folder-monitoring process entirely — no more drops will be reported until you call it again with `accept = 1`.
 
-**Do not abort the callback method**. If you abort the execution context, the process will keep running but the method will not longer be called from the plugin until you reopen the structure file.
+## The callback method
 
----
+Your `method` project method must accept exactly two parameters:
 
-#### Technical Details
+| Parameter | Type | Contents |
+| --- | --- | --- |
+| `$1` | Text | The full system path of the file that was just dropped/exported (e.g. `/Users/name/Library/.../3.eml`) |
+| `$2` | Text | A copy of whatever `context` string you passed to `ACCEPT FILE PROMISES` |
 
-This plugin is designed to add the following functionalities to 4D:
-
-* Drag and drop emails from typical clients (Mail, Outlook) directly to 4D.
-
-To customise drag and drop event handling, the plugin uses a technique known as **method swizzling**. For that reason, it is only compatible with the 64-bit Cocoa version of 4D.
-
-When swizzling is activated, the plugin adds some extra code to the following drag and drop obj-c methods from the ``NSDraggingDestination`` protocol: ``draggingEntered:`` ``draggingUpdated:`` ``prepareForDragOperation:`` ``performDragOperation:`` ``concludeDragOperation:``.
-
-This allows the plugin to perform some extra work when 4D processes drag and drop events (``On Drag Over``, ``On Drop``) on its form objects.
-
-``draggingEntered:`` nothing special  
-``draggingUpdated:`` nothing special  
-``prepareForDragOperation:`` nothing special  
-
-``performDragOperation:``  
-
-Inspect ``[[sender draggingPasteboard]types]``.  
-
-* Mail (Apple)
-
-If ``com.apple.mail.PasteboardTypeAutomator`` is found, the plugin runs code to get ``eml`` files out of Mail.
-
-**Note**: Evidently, Mail uses [file promises](https://developer.apple.com/documentation/uikit/drag_and_drop/understanding_a_drag_item_as_a_promise) to export a single message (short operation) and Automator to export multiple messages. ``com.apple.mail.PasteboardTypeAutomator`` is a property list, an ``NSArray`` of ``NSDictionary``, which maps to objects with the structure ``[{account:string, id:integer, mailbox:string, subject:string}]``. Given the 3 identifiers (``account``, ``mailbox``, ``id``) it is possible to use AppleScript like this:
-
-```applescript
-on run argv
-	set param_mailbox to item 1 of argv
-	set param_account to item 2 of argv
-	set param_id to item 3 of argv
-	set param_path to item 4 of argv
-	tell application "Mail"
-		set mm to (messages of mailbox param_mailbox of account param_account) whose id is param_id
-		if (count mm) is 1 then
-			set m to item 1 of mm
-			set p to param_path
-			set s to (source of m) as «class utf8»
-			try
-				set f to open for access p with write permission
-				write s to f
-				close access f
-			end try
-		end if
-	end tell
-end run
+```4d
+// Example signature
+C_TEXT($1;$path)
+C_TEXT($2;$context)
 ```
 
-**For optimisation**, the plugin uses [``ScriptingBridge``](https://developer.apple.com/documentation/scriptingbridge) to create the ``eml`` file by itself, rather than launching ``osascript`` or ``NSAppleScript`` to run the AppleScript shown above.
+**One call per file.** If several messages are dropped at once, the method is called once per resulting file — not once for the whole drop.
 
-```objc
-MailApplication *application = [SBApplication applicationWithBundleIdentifier:@"com.apple.mail"];
+**Do not abort the method.** If your method calls `ABORT` (or otherwise aborts its own execution context), the plugin's background process keeps running, but it stops invoking your method for any further drops — until the structure file is reopened. Always let the method run to completion; use a normal `If`/`Else` to skip work instead of aborting.
 
-NSArray *mails = [application selection];
-NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
-NSUInteger i = 0;
+**Using `$2` (context) for UI updates.** Because the drop is detected and processed outside your form's own event loop, `context` is commonly used to tell the callback which process/window/object to notify — for example, packing a small JSON object like `{"window":<process number>;"method":"UpdateDropZone"}` and having the callback method `CALL FORM` (or otherwise signal) that process once the file is ready.
 
-NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
+## Usage
 
-for (id source in sources) {
-	i++;
-	NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
-	[(NSString *)source writeToFile:dst
-		atomically:NO
-		encoding:NSUTF8StringEncoding
-		error:nil];
-}
+### 1. Turn it on when the form opens
+
+```4d
+// Form method, On Load
+ACCEPT FILE PROMISES(1;"AFP_Callback";JSON Stringify({"window":Current form window;"method":"AFP_UpdateDropZone"}))
 ```
 
-* Outlook (Microsoft)
+### 2. Turn it off when you no longer need it
 
-Likewise, if ``dyn.ah62d4rv4gu8ynywrqz31g2phqzkgc65yqzvg82pwqvnhw6df`` is found, the plugin runs code to get ``eml`` files out of Outlook.
-
-**Note**: The above dynamic UTI resolves as ``?0=6:4=ERMessagePasteboardType`` using the method published [here](https://gist.github.com/jtbandes/19646e7457208ae9b1ad). Outlook used to deliver a type named ``ERMessagePasteboardType`` in version 14 but evidently removed it in version 15.
-
-There is no list of selected messages (as was the case with Mail) but we could assume in AppleScript that the current selection should be exported like this:
-
-```applescript
-on run argv
-	set param_path to item 1 of argv
-	tell application "Microsoft Outlook"
-		set p to param_path
-		set mm to selection as list
-		repeat with m in mm
-			set s to (source of m) as «class utf8»
-			try
-				set f to open for access (p & (id of m) & ".eml") with write permission
-				write s to f
-				close access f
-			end try
-		end repeat
-	end tell
-end run
-``` 
-
-**For optimisation**, the plugin uses [``ScriptingBridge``](https://developer.apple.com/documentation/scriptingbridge) to create the ``eml`` file by itself, rather than launching ``osascript`` or ``NSAppleScript`` to run the AppleScript shown above. Notice the property is ``selectedObjects``, not ``selection`` as in Mail.
-
-```objc
-MailApplication *application = [SBApplication applicationWithBundleIdentifier:@"com.apple.mail"];
-		
-NSArray *mails = [application selection];
-NSArray *sources = [mails arrayByApplyingSelector:@selector(source)];
-NSUInteger i = 0;
-
-NSString *path = (NSString *)CFURLCopyFileSystemPath((CFURLRef)url, kCFURLPOSIXPathStyle);
-
-for (id source in sources) {
-	i++;
-	NSString *dst = [path stringByAppendingFormat:@"/%d.%@", i, @"eml"];
-	[(NSString *)source writeToFile:dst
-		atomically:NO
-		encoding:NSUTF8StringEncoding
-		error:nil];
-}
+```4d
+// Form method, On Close, or On Unload
+ACCEPT FILE PROMISES(0)
 ```
 
-* Fallback
+### 3. Write the callback method (`AFP_Callback`)
 
-When neither of the app specific types are found, but either ``kPasteboardTypeFileURLPromise`` or ``NSPromiseContentsPboardType`` is found, the plugin falls back to generic file promise handling. In particular, it calls ``namesOfPromisedFilesDroppedAtDestination:`` to request the source to created the promised files. **However, this does not seem to work on High Sierra** (no issues on El Capitan). 
+A typical callback records the path somewhere the rest of your app can see it, then pings the right process/window so the UI can react — the context string is where you tell it who to ping.
 
-Maybe it is because [``namesOfPromisedFilesDroppedAtDestination:``](https://developer.apple.com/documentation/appkit/nsdragginginfo/1415980-namesofpromisedfilesdroppedatdes) has been deprecated in 10.13. 
+```4d
+//AFP_Callback
+//%attributes = {}
+C_TEXT($1;$path)
+C_TEXT($2)
+C_OBJECT($context)
 
-* Folder Watching
+$path:=$1
+$context:=JSON Parse($2;Is object)
 
-Whether the designated apps (Mail, Outlook) are invoked by scripting, or file promises are used, the plugin starts monitoring the destination folder (which is created in the temporary folder, ``NSItemReplacementDirectory`` in ``NSUserDomainMask`` appropriate for ``NSDesktopDirectory``) using [``FSEventStream``](https://developer.apple.com/library/content/documentation/Darwin/Conceptual/FSEvents_ProgGuide/UsingtheFSEventsFramework/UsingtheFSEventsFramework.html).
+// keep a running list of everything dropped so far
+APPEND TO ARRAY(OBJECT Get pointer(Object named;"Paths")->;$path)
 
-The callback 4D method is executed every time a file is added to the destination folder. Meanwhile, **for optimisation**, the code to extract and export ``eml`` files from Mail or Outlook are executed in a background thread, with [``performSelectorInBackground:``](https://developer.apple.com/documentation/objectivec/nsobject/1412390-performselectorinbackground?language=objc).  
+// notify the window/process that requested the drop
+CALL FORM(OB Get($context;"window";Is longint);OB Get($context;"method";Is text);$path)
+```
 
-* Simple API
+### 4. Handle the notification in the target form (`AFP_UpdateDropZone`)
 
-If neither the app specific types or the file promise types are found, but ``NSFilenamesPboardType`` is found, in other words, a file (not a promise) has been dropped, the same callback 4D method is invoked instantly. 4D does not have to know if the file existed already or was created via scripting or via promises being kept. It just receives a path.
+```4d
+//AFP_UpdateDropZone
+//%attributes = {}
+C_TEXT($1;$path)
+
+$path:=$1
+
+// e.g. reveal the exported file to the user
+SHOW ON DISK(Temporary folder)
+
+// ...or add it to a form array, refresh a list box, etc.
+```
+
+This mirrors the three-method pattern used internally by this plugin's own test project: one method receives the drop and records it, a second appends the path to a shared array, and `SHOW ON DISK(Temporary folder)` is a quick way to confirm a file really landed during testing.
+
+## What gets dropped, and from where
+
+| Source | What arrives | Notes |
+| --- | --- | --- |
+| Apple Mail (one message) | An `.eml` file | Delivered via a file promise |
+| Apple Mail (multiple messages) | One `.eml` file per message | Mail switches to an Automator-driven export for multi-select; each resulting file still triggers your callback once |
+| Microsoft Outlook | One `.eml` file per selected message | Requires Outlook to be running |
+| Photos | The original image/video file | Only one asset can be exported this way at a time |
+| Finder / any other app | The file as-is | No export step — the plugin just reports the path 4D received |
+
+Other things worth knowing:
+
+- **First-run permission prompt.** The first time a user drags from Mail or Photos, macOS will ask them to approve your app controlling that application (System Settings ▸ Privacy & Security ▸ Automation). This is normal and only happens once per app/user.
+- **A short delay is normal.** Exported files are detected by watching the destination folder, so there can be a brief (roughly one second) delay between the drop finishing and your callback firing. Don't build UI that assumes it's instantaneous.
+- **Disabling stops everything.** `ACCEPT FILE PROMISES(0)` stops the whole background monitor, not just your form's drop zone — no drops anywhere in the app will be reported until you re-enable it.
+- **The callback runs outside your form's normal event.** Treat it like an asynchronous notification: don't assume the current form/window is the one the user dropped onto — that's exactly what the `context` parameter is for.
+
+## Troubleshooting
+
+**My callback method never fires.**
+
+- Confirm `Info.plist` has `NSAppleEventsUsageDescription` set — without it, macOS blocks the automation calls to Mail/Outlook/Photos outright.
+- Check System Settings ▸ Privacy & Security ▸ Automation and make sure your app is allowed to control Mail/Photos.
+- Make sure the method name passed to `ACCEPT FILE PROMISES` exactly matches an existing project method name.
+
+**It worked once, then stopped.**
+
+- Check whether the callback method (or something it calls) executed `ABORT`. That silently kills future callbacks until the structure file is reopened — see *Do not abort the method* above.
+
+**Dropping multiple Mail messages only exports one.**
+
+- This is expected for a single message (file promise). For multiple messages, Mail exports each one individually and your callback fires once per message — if you only see one, check that your method isn't returning early after the first call.
+
+**Nothing happens when dropping from Outlook.**
+
+- Outlook must be running (not just installed) for AppleScript/ScriptingBridge export to work.
+
+**I need to know when *all* files from one drop have arrived, not just each one individually.**
+
+- The plugin reports files one at a time as they're ready; it doesn't send a "batch complete" signal. If you need that, have your callback method count expected vs. received files (e.g. using the `context` value to pass an expected count) and decide completion yourself.
