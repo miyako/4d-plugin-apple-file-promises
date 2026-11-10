@@ -233,6 +233,48 @@ class NativeWorkflowTests(Fixture):
         self.mac_step("build macOS plugin (universal)", success=False)
         self.assertFalse(any(call[0] == "xcodebuild" for call in self.calls()))
 
+    def test_late_cleanup_wrong_types_preserve_first_leaf_and_never_call_native_tools(self):
+        cases = (
+            (native.FILES[-1], "directory"),
+            (native.DIRECTORIES[-1], "file"),
+            (native.XCODE_DATA, "file"),
+            (native.FILES[-1], "fifo"),
+            (native.DIRECTORIES[-1] / "nested/special", "fifo"),
+            (native.XCODE_DATA / "nested/special", "fifo"),
+            (native.DIRECTORIES[-1] / "nested/.git", "file"),
+            (native.DIRECTORIES[-1] / "nested/.git", "directory"),
+            (native.XCODE_DATA / "nested/.git", "file"),
+            (native.XCODE_DATA / "nested/.git", "directory"),
+        )
+        for relative, kind in cases:
+            with self.subTest(path=relative, kind=kind):
+                first = self.checkout / native.FILES[0]
+                first.write_bytes(b"earlier leaf must remain byte-identical")
+                late = self.checkout / relative
+                saved = late.read_bytes() if late.is_file() else None
+                late.unlink(missing_ok=True)
+                late.parent.mkdir(parents=True, exist_ok=True)
+                if kind == "directory":
+                    late.mkdir()
+                elif kind == "file":
+                    late.write_bytes(b"wrong type or nested Git marker")
+                else:
+                    os.mkfifo(late)
+                self.log.unlink(missing_ok=True)
+                try:
+                    result = self.mac_step("build macOS plugin (universal)", success=False)
+                    self.assertIn("ValueError", result.stderr)
+                    self.assertEqual(first.read_bytes(), b"earlier leaf must remain byte-identical")
+                    self.assertTrue(late.exists())
+                    self.assertEqual([call[0] for call in self.calls()], ["python3"])
+                finally:
+                    if late.is_dir():
+                        late.rmdir()
+                    else:
+                        late.unlink(missing_ok=True)
+                    if saved is not None:
+                        late.write_bytes(saved)
+
     def test_missing_empty_stale_binary_and_exact_architecture_tokens(self):
         self.env["STALE_BUILD"] = "1"
         self.build()

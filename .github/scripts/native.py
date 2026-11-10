@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import re
 import shutil
+import stat
 
 
 PRODUCT = "Apple file promises"
@@ -55,6 +56,19 @@ def prepare():
     files = FILES
     directories = DIRECTORIES
     validate_paths((*files, *directories, XCODE_DATA))
+    for path in (*files, *directories, XCODE_DATA):
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            continue
+        expected = stat.S_ISREG if path in files else stat.S_ISDIR
+        if not expected(mode):
+            raise ValueError(f"Unexpected cleanup target type: {path}")
+    for directory in (*directories, XCODE_DATA):
+        for descendant in directory.rglob("*"):
+            mode = descendant.lstat().st_mode
+            if descendant.name == ".git" or not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
+                raise ValueError(f"Unsupported cleanup descendant: {descendant}")
     for path in files:
         path.unlink(missing_ok=True)
     for path in directories:

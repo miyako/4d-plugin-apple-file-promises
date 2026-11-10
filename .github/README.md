@@ -49,6 +49,10 @@ Cleanup removes only six exact generated bundle leaves and the project's
 `build/Apple file promises.build` intermediates, after checking every cleanup
 path and descendant for symlinks. It never removes whole bundles, resources
 siblings, prebuilt Windows inputs or Default siblings.
+All existing cleanup leaves must be regular files, and intermediate/XCBuildData
+roots must be directories. Every target's type is checked, and special-file
+descendants and nested `.git` markers are rejected before the first deletion, so a late invalid
+target cannot destroy earlier valid outputs.
 Unsigned validation precedes signing; final publication separately requires
 all eight packaged leaves to be nonempty regular nonsymlink files, exact
 source resources, matching built XML/binary/localized metadata, and unchanged
