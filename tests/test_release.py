@@ -234,6 +234,7 @@ class PublicationCLITests(GitFixture):
             target = self.local / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(b"ignored-source.cpp\nbuild/*\ntest/Plugins/*\n"
+                               b"!test/Plugins/Apple file promises.bundle/\n"
                                if path == ".gitignore" else b"protected")
         self.generated = tuple(str(path) for path in native.FILES)
         for path in self.generated:
