@@ -1,0 +1,136 @@
+{
+  "reference_pins": [
+    {
+      "name": "native-encoding-detection",
+      "repo": "miyako/4d-plugin-native-encoding-detection",
+      "pin": "c42ca565857f674bde5ea6ed3435c87375eda4a7"
+    },
+    {
+      "name": "file-information",
+      "repo": "miyako/4d-plugin-file-information",
+      "pin": "19848973601acfd3a2b5070230fa40cdc7e4edb2"
+    },
+    {
+      "name": "common-string-algorithm",
+      "repo": "miyako/4d-plugin-common-string-algorithm",
+      "pin": "2606a68201866ec9fcbb38b51462d79215f504ef"
+    },
+    {
+      "name": "window-button",
+      "repo": "miyako/4d-plugin-window-button",
+      "pin": "3f14facb9aaaaff0e22eeb8e07531163680c3a8a"
+    },
+    {
+      "name": "raw-picture-data",
+      "repo": "miyako/4d-plugin-raw-picture-data",
+      "pin": "8144537fdc8dcc3d0c053dfe97aff0a8c0c3a6f9"
+    },
+    {
+      "name": "PRNG",
+      "repo": "miyako/4d-plugin-PRNG",
+      "pin": "522f62e1e9f388be0f3f226c1d4c39362dad2491"
+    },
+    {
+      "name": "get-file-description",
+      "repo": "miyako/4d-plugin-get-file-description",
+      "pin": "0e6dad397e015c3c7ec61d7dfeb9c60bc6a4a22b"
+    },
+    {
+      "name": "maddy",
+      "repo": "miyako/4d-plugin-maddy",
+      "pin": "e000f17a5ad5085dcd010a9ddde76a4cb2d3119b"
+    },
+    {
+      "name": "keychain",
+      "repo": "miyako/4d-plugin-keychain",
+      "pin": "7aedc6ba4633e53f5055c1b83c68a6dd32d9c85a"
+    },
+    {
+      "name": "window-style",
+      "repo": "miyako/4d-plugin-window-style",
+      "pin": "2794dbe06717b8344a99fc14991a7a2b5d6ef196"
+    },
+    {
+      "name": "shell-execute-v2",
+      "repo": "miyako/4d-plugin-shell-execute-v2",
+      "pin": "ee33f21111d9a042101ccc11d68672a7a0067e9c"
+    },
+    {
+      "name": "serial",
+      "repo": "miyako/4d-plugin-serial",
+      "pin": "32f33a3b3de7dd5201b215ff6050dd3d68e03936"
+    },
+    {
+      "name": "UTI",
+      "repo": "miyako/4d-plugin-UTI",
+      "pin": "5decf4be07f8297d256dfb559ef9466525fe9045"
+    },
+    {
+      "name": "RTF2TEXT",
+      "repo": "miyako/4d-plugin-RTF2TEXT",
+      "pin": "4a8c89677515cd5c71c162e0b296e63bee374cdd"
+    },
+    {
+      "name": "libarchive",
+      "repo": "miyako/4d-plugin-libarchive",
+      "pin": "9547d09522fc422ddd754fb088165b3d1d1d3073"
+    },
+    {
+      "name": "stomp",
+      "repo": "miyako/4d-plugin-stomp",
+      "pin": "ab9f5e51dba5b8b6ec1a1b70e191082fcb73fb41"
+    }
+  ],
+  "adapted_bases": [
+    {
+      "repo": "miyako/4d-plugin-shell-execute-v2",
+      "pin": "ee33f21111d9a042101ccc11d68672a7a0067e9c",
+      "path": ".github/scripts/bump.py",
+      "raw_git_blob": "5c8e51af859ef599266640b1dbd39c89d282b838",
+      "mode": "100644"
+    },
+    {
+      "repo": "miyako/4d-plugin-shell-execute-v2",
+      "pin": "ee33f21111d9a042101ccc11d68672a7a0067e9c",
+      "path": ".github/hooks/pre-push",
+      "raw_git_blob": "e06e50d2b33972ce25ca3611e97b1395062ae81a",
+      "mode": "100755"
+    },
+    {
+      "repo": "miyako/4d-plugin-libarchive",
+      "pin": "9547d09522fc422ddd754fb088165b3d1d1d3073",
+      "path": ".github/scripts/repository.py",
+      "raw_git_blob": "ba3a0bd1b7831c68a59cbd147bd1501f1c004fc2",
+      "mode": "100644"
+    },
+    {
+      "repo": "miyako/4d-plugin-UTI",
+      "pin": "5decf4be07f8297d256dfb559ef9466525fe9045",
+      "path": ".github/scripts/source_version.py",
+      "raw_git_blob": "7df4c3f6bec923fa1a4c567f0f1b0c8a393af461",
+      "mode": "100644"
+    },
+    {
+      "repo": "miyako/4d-plugin-UTI",
+      "pin": "5decf4be07f8297d256dfb559ef9466525fe9045",
+      "path": ".github/scripts/release.py",
+      "raw_git_blob": "6e079461946e3ae6ccfe24f9a6623df1bc9fded7",
+      "mode": "100644"
+    },
+    {
+      "repo": "miyako/4d-plugin-UTI",
+      "pin": "5decf4be07f8297d256dfb559ef9466525fe9045",
+      "path": ".github/scripts/native.py",
+      "raw_git_blob": "312cdffe942d7913f83031508c76c218b8e1f951",
+      "mode": "100644"
+    },
+    {
+      "repo": "miyako/4d-plugin-UTI",
+      "pin": "5decf4be07f8297d256dfb559ef9466525fe9045",
+      "path": ".github/scripts/native.sh",
+      "raw_git_blob": "041a4ccaad981d1c30e462791f63b49850dd0e34",
+      "mode": "100644"
+    }
+  ],
+  "scope_certificate": "Session artifact reference-reader/closure-ledger.json: CLOSED_SCOPED; exclusions remain scan-only, not contextual receipts."
+}
