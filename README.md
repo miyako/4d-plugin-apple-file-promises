@@ -7,6 +7,9 @@ See [4d-utility-sign-app](https://github.com/miyako/4d-utility-sign-app) on how 
 
 # 4d-plugin-apple-file-promises
 
+Maintainers: see [manual Bump and Build workflows](.github/README.md) for
+source-version authority, create-only publication and failure recovery.
+
 **Apple file promises** is a 4D plugin (macOS only, 64-bit Cocoa builds) that adds one command, `ACCEPT FILE PROMISES`, to your 4D application. Once enabled, users can drag a message directly out of **Apple Mail** or **Microsoft Outlook** — or a photo out of the **Photos** app, or any ordinary file from the Finder — and drop it onto a 4D form. The plugin does the work of turning that drag into a real file on disk (exporting the message as an `.eml` file, or the photo as an image file), and then calls a 4D method you write, passing it the full path of the file.
 
 Requirements:
