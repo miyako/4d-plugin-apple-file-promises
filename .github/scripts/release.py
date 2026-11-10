@@ -146,6 +146,7 @@ def context(sha, *, final=False):
                                *map(Path, asset_names(version))))
     repository.verify_checkout(sha, generated=native.generated,
                                assets=asset_names(version), final=final)
+    native.verify_intermediate_sources(sha)
     if final:
         source_version.verify_bundle(native.BUNDLE)
         native.validate_final(sha)

@@ -16,9 +16,12 @@ FILES = tuple(BUNDLE / relative for relative in (
     "Contents/Resources/constants.xlf", "Contents/Resources/manifest.json",
     "Contents/_CodeSignature/CodeResources",
 ))
-XCODE_DATA = Path("build/XCBuildData")
+XCODE_DATA = BASE / "XCBuildData"
 DIRECTORIES = (
-    Path("build") / (PRODUCT + ".build"),
+    BASE / (PRODUCT + ".build"),
+    BASE / "SwiftExplicitPrecompiledModules",
+    BASE / "ExplicitPrecompiledModules",
+    BASE / "EagerLinkingTBDs/Default",
 )
 PRESERVED = tuple(BUNDLE / relative for relative in (
     "Contents/QuickLook/Thumbnail.png",
@@ -30,7 +33,7 @@ PACKAGED = (*FILES, *PRESERVED)
 def generated(path):
     return (path in set(map(str, FILES))
             or bool(re.fullmatch(
-                r"build/XCBuildData/(?:build\.db(?:-wal|-shm)?|"
+                r"test/Plugins/XCBuildData/(?:build\.db(?:-wal|-shm)?|"
                 r"[0-9a-f]{32}\.xcbuilddata/.+)", path))
             or any(path.startswith(str(directory) + "/")
                    for directory in DIRECTORIES))
@@ -52,7 +55,7 @@ def validate_paths(paths):
                     raise ValueError(f"Refusing symlink output: {descendant}")
 
 
-def prepare():
+def validate_cleanup_targets():
     files = FILES
     directories = DIRECTORIES
     validate_paths((*files, *directories, XCODE_DATA))
@@ -69,6 +72,20 @@ def prepare():
             mode = descendant.lstat().st_mode
             if descendant.name == ".git" or not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
                 raise ValueError(f"Unsupported cleanup descendant: {descendant}")
+
+
+def verify_intermediate_sources(sha):
+    import repository
+    roots = tuple(map(str, (*DIRECTORIES, XCODE_DATA)))
+    if repository.run("git", "ls-tree", "-r", "-z", sha, "--", *roots) \
+            or repository.run("git", "ls-files", "--stage", "-z", "--", *roots):
+        raise ValueError("Tracked source/index must not occupy cleanup intermediate roots")
+
+
+def prepare():
+    files = FILES
+    directories = DIRECTORIES
+    validate_cleanup_targets()
     for path in files:
         path.unlink(missing_ok=True)
     for path in directories:
@@ -98,6 +115,7 @@ def validate_unsigned():
 
 def validate_final(sha):
     import repository
+    validate_cleanup_targets()
     for path in PACKAGED:
         require_file(path)
     selected = repository.entries(repository.run("git", "ls-tree", "-r", "-z", sha, "--"))

@@ -45,14 +45,18 @@ project output settings and Deployment-only shell phase are preserved.
 No configuration-output override, signing-disable flag, dependency clone,
 runtime library rule or legacy-phase bypass is introduced.
 
-Cleanup removes only six exact generated bundle leaves and the project's
-`build/Apple file promises.build` intermediates, after checking every cleanup
-path and descendant for symlinks. It never removes whole bundles, resources
-siblings, prebuilt Windows inputs or Default siblings.
+Cleanup removes only six exact generated bundle leaves and four evidenced
+intermediate roots under `test/Plugins`: `Apple file promises.build`,
+`SwiftExplicitPrecompiledModules`, `ExplicitPrecompiledModules`, and
+`EagerLinkingTBDs/Default`. All paths and descendants are symlink-prevalidated.
+It never removes whole bundles, resources siblings, prebuilt Windows inputs,
+the whole `test/Plugins` root or Default siblings.
 All existing cleanup leaves must be regular files, and intermediate/XCBuildData
 roots must be directories. Every target's type is checked, and special-file
-descendants and nested `.git` markers are rejected before the first deletion, so a late invalid
-target cannot destroy earlier valid outputs.
+descendants and nested `.git` markers are rejected before the first deletion,
+so a late invalid target cannot destroy earlier valid outputs. Initial immutable
+source/raw/index validation runs before cleanup. Selected or indexed inputs
+inside intermediate roots are forbidden rather than reclassified as outputs.
 Unsigned validation precedes signing; final publication separately requires
 all eight packaged leaves to be nonempty regular nonsymlink files, exact
 source resources, matching built XML/binary/localized metadata, and unchanged
@@ -66,10 +70,24 @@ Initial checkout validation is globally clean, including ignored files.
 Final validation retains real native-produced tracked bytes, checks immutable
 HEAD, exact index and all nongenerated raw bytes independently, and rejects
 both `ls-files -v` and `-f` hidden/stat flags. Final exemptions cover only the
-exact generated leaves, project intermediates, exact `build/XCBuildData`
+exact generated leaves, those four intermediate roots, exact `test/Plugins/XCBuildData`
 database/WAL/SHM names and lowercase 32-hex `.xcbuilddata` descendants.
 Unexpected ignored source, database-like siblings and source/config changes
 fail before API access. Generated files are never reset to fake cleanliness.
+The former `build/Apple file promises.build` and `build/XCBuildData` roots are
+not allowed. XCBuildData is not recursively exempted or deleted.
+
+The roots are supported by the successful **original** Default build at intake
+`a3934bf886188e4d08cab3936df59ad0ae3657ed`, run
+[36969739358, job 110721037879](https://github.com/miyako/4d-plugin-apple-file-promises/actions/runs/36969739358/job/110721037879),
+step 5. The authoritative 928-line group-boundary extract records XCBuildData
+at line 55, auxiliary directory creation at lines 68/72/76, project
+intermediates at lines 64 and 87 onward, and success at line 927.
+The earlier 950-line timestamp interval overlaps adjacent steps because of
+same-second timestamps; it is retained separately, not treated as the exact
+step extract. [Native evidence provenance](native-evidence.json) records both
+artifact hashes and their distinct scope. No new hosted build was dispatched;
+offline doubles test the allowlist but do not establish native output roots.
 
 ## Create-only publication and manual recovery
 

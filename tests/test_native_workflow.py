@@ -60,10 +60,22 @@ elif tool == "xcodebuild":
             pathlib.Path("English.lproj/InfoPlist.strings").read_bytes().decode().encode("utf-16"))
         for resource in ("manifest.json", "constants.xlf"):
             shutil.copyfile(resource, contents / "Resources" / resource)
-        db = pathlib.Path("build/XCBuildData")
+        db = pathlib.Path("test/Plugins/XCBuildData")
         db.mkdir(parents=True, exist_ok=True)
         for name in ("build.db", "build.db-wal", "build.db-shm"):
             (db / name).write_bytes(b"fresh-database")
+        request = db / "8438e7a5fde6e4f98039a780576f6382.xcbuilddata/build-request.json"
+        request.parent.mkdir(parents=True, exist_ok=True)
+        request.write_bytes(b"fresh-build-request")
+        for root, leaf in (
+            ("Apple file promises.build/Default/Apple file promises.build", "main.o"),
+            ("SwiftExplicitPrecompiledModules", "module.pcm"),
+            ("ExplicitPrecompiledModules", "module.pcm"),
+            ("EagerLinkingTBDs/Default", "module.tbd"),
+        ):
+            target = pathlib.Path("test/Plugins") / root / leaf
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(b"fresh-intermediate")
 elif tool == "lipo":
     print(os.environ.get("DYLIB_ARCHES" if args[-1].endswith(".dylib") else "ARCHES",
                          "arm64 x86_64"))
@@ -236,15 +248,13 @@ class NativeWorkflowTests(Fixture):
     def test_late_cleanup_wrong_types_preserve_first_leaf_and_never_call_native_tools(self):
         cases = (
             (native.FILES[-1], "directory"),
-            (native.DIRECTORIES[-1], "file"),
-            (native.XCODE_DATA, "file"),
             (native.FILES[-1], "fifo"),
-            (native.DIRECTORIES[-1] / "nested/special", "fifo"),
-            (native.XCODE_DATA / "nested/special", "fifo"),
-            (native.DIRECTORIES[-1] / "nested/.git", "file"),
-            (native.DIRECTORIES[-1] / "nested/.git", "directory"),
-            (native.XCODE_DATA / "nested/.git", "file"),
-            (native.XCODE_DATA / "nested/.git", "directory"),
+            *((root, kind) for root in (*native.DIRECTORIES, native.XCODE_DATA)
+              for kind in ("file", "fifo")),
+            *((root / relative, kind)
+              for root in (*native.DIRECTORIES, native.XCODE_DATA)
+              for relative, kind in (("nested/special", "fifo"),
+                                     ("nested/.git", "file"), ("nested/.git", "directory"))),
         )
         for relative, kind in cases:
             with self.subTest(path=relative, kind=kind):
@@ -274,6 +284,45 @@ class NativeWorkflowTests(Fixture):
                         late.unlink(missing_ok=True)
                     if saved is not None:
                         late.write_bytes(saved)
+
+    def test_all_hosted_cleanup_roots_reject_symlinks_before_any_deletion_or_native_call(self):
+        for root in (*native.DIRECTORIES, native.XCODE_DATA):
+            for relative in (root, root / "nested/link"):
+                with self.subTest(path=relative):
+                    first = self.checkout / native.FILES[0]
+                    first.write_bytes(b"earlier leaf must remain byte-identical")
+                    peer = self.root / "same-intermediate-bytes"
+                    peer.write_bytes(b"must remain")
+                    target = self.checkout / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.symlink_to(peer)
+                    self.log.unlink(missing_ok=True)
+                    self.mac_step("build macOS plugin (universal)", success=False)
+                    self.assertEqual(first.read_bytes(), b"earlier leaf must remain byte-identical")
+                    self.assertEqual(peer.read_bytes(), b"must remain")
+                    self.assertEqual([call[0] for call in self.calls()], ["python3"])
+                    target.unlink()
+
+    def test_hosted_root_cleanup_is_narrow_and_default_siblings_survive(self):
+        stale = []
+        for root in native.DIRECTORIES:
+            path = self.checkout / root / "stale/old-output"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"stale intermediate")
+            stale.append(path)
+        sibling = self.checkout / "test/Plugins/EagerLinkingTBDs/Debug/keep"
+        sibling.parent.mkdir(parents=True)
+        sibling.write_bytes(b"untouched sibling")
+        self.build()
+        self.assertTrue(all(not path.exists() for path in stale))
+        self.assertEqual(sibling.read_bytes(), b"untouched sibling")
+        for root, leaf in (
+            (native.DIRECTORIES[0] / "Default/Apple file promises.build", "main.o"),
+            (native.DIRECTORIES[1], "module.pcm"),
+            (native.DIRECTORIES[2], "module.pcm"),
+            (native.DIRECTORIES[3], "module.tbd"),
+        ):
+            self.assertEqual((self.checkout / root / leaf).read_bytes(), b"fresh-intermediate")
 
     def test_missing_empty_stale_binary_and_exact_architecture_tokens(self):
         self.env["STALE_BUILD"] = "1"

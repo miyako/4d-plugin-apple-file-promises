@@ -233,7 +233,8 @@ class PublicationCLITests(GitFixture):
         for path in self.protected:
             target = self.local / path
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(b"ignored-source.cpp\nbuild/*\n" if path == ".gitignore" else b"protected")
+            target.write_bytes(b"ignored-source.cpp\nbuild/*\ntest/Plugins/*\n"
+                               if path == ".gitignore" else b"protected")
         self.generated = tuple(str(path) for path in native.FILES)
         for path in self.generated:
             target = self.local / path
@@ -270,12 +271,16 @@ class PublicationCLITests(GitFixture):
             self.generated[1]: plistlib.dumps({source.SHORT: self.version}, fmt=plistlib.FMT_BINARY),
             self.generated[2]: source.text(self.local / source.LOCALIZED).encode("utf-16"),
             self.generated[-1]: b"fresh signature bytes",
-            "build/XCBuildData/build.db": b"fresh Xcode build database",
-            "build/XCBuildData/build.db-wal": b"fresh Xcode write-ahead log",
-            "build/XCBuildData/build.db-shm": b"fresh Xcode shared memory",
-            "build/XCBuildData/0123456789abcdef0123456789abcdef.xcbuilddata/build-request.json":
+            "test/Plugins/XCBuildData/build.db": b"fresh Xcode build database",
+            "test/Plugins/XCBuildData/build.db-wal": b"fresh Xcode write-ahead log",
+            "test/Plugins/XCBuildData/build.db-shm": b"fresh Xcode shared memory",
+            "test/Plugins/XCBuildData/8438e7a5fde6e4f98039a780576f6382.xcbuilddata/build-request.json":
                 b"fresh Xcode request",
-            "build/Apple file promises.build/Default/Apple file promises.build/main.o": b"fresh intermediate",
+            "test/Plugins/Apple file promises.build/Default/Apple file promises.build/main.o":
+                b"fresh intermediate",
+            "test/Plugins/SwiftExplicitPrecompiledModules/module.pcm": b"fresh Swift module",
+            "test/Plugins/ExplicitPrecompiledModules/module.pcm": b"fresh explicit module",
+            "test/Plugins/EagerLinkingTBDs/Default/module.tbd": b"fresh linking stub",
         }
         data.update({path: (self.local / Path(path).name).read_bytes()
                      for path in self.generated[3:-1]})
@@ -317,7 +322,7 @@ class PublicationCLITests(GitFixture):
     def test_actual_cli_ignored_xcode_database_retained_without_relaxing_source_guards(self):
         self.assertEqual(self.command("preflight").returncode, 0)
         self.reset_api()
-        relative = "build/XCBuildData/build.db"
+        relative = "test/Plugins/XCBuildData/build.db"
         database = self.local / relative
         database.parent.mkdir(parents=True)
         database.write_bytes(b"stale initial database")
@@ -327,14 +332,30 @@ class PublicationCLITests(GitFixture):
         database.unlink()
 
         expected = self.build()
-        for path in ("build/unexpected-source.cpp", "build/XCBuildData/unexpected-source.cpp",
+        for path in ("build/unexpected-source.cpp", "build/XCBuildData/build.db",
+                     "build/Apple file promises.build/Default/Apple file promises.build/main.o",
+                     "build/XCBuildData/unexpected-source.cpp",
                      "build/XCBuildData/build.db-evil",
-                     "build/XCBuildData/evil.xcbuilddata/build-request.json"):
+                     "build/XCBuildData/evil.xcbuilddata/build-request.json",
+                     "test/Plugins/XCBuildData/unexpected-source.cpp",
+                     "test/Plugins/XCBuildData/build.db-evil",
+                     "test/Plugins/XCBuildData/build.db-wal-evil",
+                     "test/Plugins/XCBuildData/build.db-shm-evil",
+                     "test/Plugins/XCBuildData/evil.xcbuilddata/build-request.json",
+                     "test/Plugins/XCBuildData/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.xcbuilddata/request",
+                     "test/Plugins/XCBuildData-evil/build.db",
+                     "test/Plugins/Apple file promises.build-evil/keep",
+                     "test/Plugins/SwiftExplicitPrecompiledModules-evil/keep",
+                     "test/Plugins/ExplicitPrecompiledModules-evil/keep",
+                     "test/Plugins/EagerLinkingTBDs/Default-evil/keep",
+                     "test/Plugins/EagerLinkingTBDs/Debug/keep",
+                     "test/Plugins/EagerLinkingTBDs/unexpected-source.cpp",
+                     "test/Plugins/unexpected-source.cpp"):
             unexpected = self.local / path
             unexpected.parent.mkdir(parents=True, exist_ok=True)
             unexpected.write_bytes(b"ignored source is not a generated database")
             self.assertEqual(self.git("check-ignore", "--", path), path)
-            self.assertNotEqual(self.command("publish").returncode, 0)
+            self.assertNotEqual(self.command("publish").returncode, 0, path)
             self.assertEqual(self.calls(), [])
             unexpected.unlink()
         config = self.local / ".gitignore"
@@ -354,6 +375,103 @@ class PublicationCLITests(GitFixture):
             self.assertEqual((self.local / path).read_bytes(), raw)
         for path, raw in expected.items():
             self.assertEqual((self.local / path).read_bytes(), raw)
+
+    def test_all_hosted_intermediate_roots_are_ignored_but_initially_rejected_before_api(self):
+        first = self.local / self.generated[0]
+        saved = first.read_bytes()
+        paths = (
+            "test/Plugins/Apple file promises.build/Default/Apple file promises.build/main.o",
+            "test/Plugins/SwiftExplicitPrecompiledModules/module.pcm",
+            "test/Plugins/ExplicitPrecompiledModules/module.pcm",
+            "test/Plugins/EagerLinkingTBDs/Default/module.tbd",
+            "test/Plugins/XCBuildData/build.db",
+            "test/Plugins/XCBuildData/8438e7a5fde6e4f98039a780576f6382.xcbuilddata/request",
+        )
+        for relative in paths:
+            with self.subTest(path=relative):
+                path = self.local / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"preexisting ignored output is not clean source")
+                self.assertEqual(self.git("check-ignore", "--", relative), relative)
+                self.assertNotEqual(self.command("preflight").returncode, 0)
+                self.assertEqual(self.calls(), [])
+                self.assertEqual(first.read_bytes(), saved)
+                path.unlink()
+        self.assertEqual(self.command("preflight").returncode, 0)
+        self.reset_api()
+        expected = self.build()
+        result = self.command("publish")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for path, raw in expected.items():
+            self.assertEqual((self.local / path).read_bytes(), raw)
+
+    def test_tracked_or_indexed_inputs_in_intermediate_roots_never_become_cleanup_outputs(self):
+        roots = (*native.DIRECTORIES, native.XCODE_DATA)
+        first = self.local / self.generated[0]
+        saved = first.read_bytes()
+        for root in roots:
+            relative = str(root / "protected-source.cpp")
+            path = self.local / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"protected source")
+            self.git("add", "-f", "--", relative)
+            self.assertNotEqual(self.command("preflight").returncode, 0)
+            self.assertEqual(self.calls(), [])
+            self.assertEqual(first.read_bytes(), saved)
+            self.git("reset", "--quiet", "HEAD", "--", relative)
+            path.unlink()
+        for root in roots:
+            path = self.local / root / "protected-source.cpp"
+            path.write_bytes(b"committed protected source")
+            self.git("add", "-f", "--", str(root / "protected-source.cpp"))
+        self.git("commit", "--quiet", "-m", "selected fixture inputs inside forbidden cleanup roots")
+        self.sha = self.git("rev-parse", "HEAD")
+        self.env["GITHUB_SHA"] = self.sha
+        result = self.command("preflight")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Tracked source/index", result.stderr)
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(first.read_bytes(), saved)
+        expected = self.build()
+        result = self.command("publish")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Tracked source/index", result.stderr)
+        self.assertEqual(self.calls(), [])
+        for path, raw in expected.items():
+            self.assertEqual((self.local / path).read_bytes(), raw)
+        for root in roots:
+            self.assertEqual((self.local / root / "protected-source.cpp").read_bytes(),
+                             b"committed protected source")
+
+    def test_final_all_hosted_roots_reject_symlinks_special_files_and_nested_git_before_api(self):
+        expected = self.build()
+        for root in (*native.DIRECTORIES, native.XCODE_DATA):
+            for kind in ("symlink", "fifo", "git-file", "git-directory"):
+                with self.subTest(root=root, kind=kind):
+                    target = self.local / root / ("nested/.git" if kind.startswith("git-")
+                                                 else "nested/invalid")
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if kind == "symlink":
+                        peer = self.root / "same-intermediate-bytes"
+                        peer.write_bytes(b"same bytes")
+                        target.symlink_to(peer)
+                    elif kind == "fifo":
+                        os.mkfifo(target)
+                    elif kind == "git-file":
+                        target.write_bytes(b"gitdir: missing\n")
+                    else:
+                        target.mkdir()
+                    result = self.command("publish")
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(self.calls(), [])
+                    if target.is_dir():
+                        target.rmdir()
+                    else:
+                        target.unlink()
+                    for path, raw in expected.items():
+                        self.assertEqual((self.local / path).read_bytes(), raw)
+        result = self.command("publish")
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_each_source_config_staged_unstaged_reversed_hidden_flag_fails_before_api(self):
         self.build()
@@ -518,7 +636,7 @@ class PublicationCLITests(GitFixture):
         self.assertEqual(self.calls(), [])
         target.unlink()
         target.write_bytes(fresh)
-        directory = self.local / "build/XCBuildData"
+        directory = self.local / "test/Plugins/XCBuildData"
         (directory / "external-link").symlink_to(external)
         self.assertNotEqual(self.command("publish").returncode, 0)
         self.assertEqual(self.calls(), [])

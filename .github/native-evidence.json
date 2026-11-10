@@ -1,0 +1,40 @@
+{
+  "repository": "miyako/4d-plugin-apple-file-promises",
+  "run_id": 36969739358,
+  "job_id": 110721037879,
+  "head_sha": "a3934bf886188e4d08cab3936df59ad0ae3657ed",
+  "step_number": 5,
+  "step_name": "build macOS plugin (universal)",
+  "conclusion": "success",
+  "configuration": "Default",
+  "job_url": "https://github.com/miyako/4d-plugin-apple-file-promises/actions/runs/36969739358/job/110721037879",
+  "artifacts": [
+    {
+      "session_path": "files/intake/hosted-native-build-36969739358.txt",
+      "lines": 928,
+      "sha256": "79433992ae865d21c8544eefcae0eee2b20271652bc1967d601fb4d7c7a7fe6c",
+      "scope": "Authoritative exact Run xcodebuild group boundary through before next step group; excludes credential-step overlap",
+      "anchors": {
+        "55": "test/Plugins/XCBuildData/8438e7a5fde6e4f98039a780576f6382.xcbuilddata",
+        "64": "test/Plugins/Apple file promises.build/Default project auxiliary outputs",
+        "68": "test/Plugins/SwiftExplicitPrecompiledModules",
+        "72": "test/Plugins/ExplicitPrecompiledModules",
+        "76": "test/Plugins/EagerLinkingTBDs/Default",
+        "87": "test/Plugins/Apple file promises.build/Default/Apple file promises.build compiler output",
+        "927": "BUILD SUCCEEDED"
+      }
+    },
+    {
+      "session_path": "files/intake/hosted-native-timestamp-interval.txt",
+      "lines": 950,
+      "sha256": "fd6b99127a15d9b459cbae7aa054a8838d7552e7a39c26d8fcd09131f5dba8d4",
+      "scope": "Earlier timestamp interval; overlaps adjacent steps due same-second timestamps; not the authoritative step extract"
+    },
+    {
+      "session_path": "files/intake/hosted-native-job-step.json",
+      "sha256": "dd5ee07d06b68cf1a69acfb08315d8dba6dece8d227dded42b8ae754107dc46d",
+      "scope": "Job/step/SHA binding and exact group-boundary extraction description"
+    }
+  ],
+  "policy": "Adapt only helper cleanup/final output roots; preserve project, native invocation, output settings, signing and phase policy. Stubs are regression doubles, not root evidence."
+}
