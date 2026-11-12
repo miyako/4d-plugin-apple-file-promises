@@ -1,0 +1,49 @@
+name: Ownership
+
+on:
+  push:
+    branches:
+      - miyako-apple-file-promises-ownership-audit
+      - master
+    paths:
+      - '4D Plugin API/**'
+      - '4DPlugin-Apple-file-promises.*'
+      - 'Mail.h'
+      - 'Outlook.h'
+      - 'Photos.h'
+      - '.github/tests/**'
+      - '.github/workflows/ownership.yml'
+      - 'tests/test_native_workflow.py'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '4D Plugin API/**'
+      - '4DPlugin-Apple-file-promises.*'
+      - 'Mail.h'
+      - 'Outlook.h'
+      - 'Photos.h'
+      - '.github/tests/**'
+      - '.github/workflows/ownership.yml'
+      - 'tests/test_native_workflow.py'
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-ownership:
+    runs-on: macos-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Actual sources, unchanged SDK, synthetic boundaries, ASan and UBSan
+        run: python3 .github/tests/test_ownership.py -v
+      - name: Immutable baseline with identical final harness
+        run: python3 .github/tests/test_ownership_baseline.py -v
+      - name: Protect SDK, release automation, manifests and build memberships
+        run: python3 .github/tests/test_ownership_preservation.py -v

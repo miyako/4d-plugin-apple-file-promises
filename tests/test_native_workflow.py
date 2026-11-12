@@ -397,7 +397,7 @@ class NativeWorkflowContractTests(unittest.TestCase):
             path.name: yaml.load(path.read_text(), Loader=yaml.BaseLoader)
             for path in WORKFLOW.parent.glob("*.yml")
         }
-        self.assertEqual(set(workflows), {"release.yml", "bump-version.yml"})
+        self.assertEqual(set(workflows), {"release.yml", "bump-version.yml", "ownership.yml"})
         build, bump = workflows["release.yml"], workflows["bump-version.yml"]
         self.assertEqual(build["name"], "Build")
         self.assertEqual(build["on"], {"workflow_dispatch": ""})
